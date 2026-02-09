@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sora);
+  --font-mono: var(--font-jetbrains-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+.brand-glow {
+  position: relative;
+  display: inline-block;
+  z-index: 0;
+  isolation: isolate;
+  text-shadow: 0 0 8px rgba(99, 102, 241, 0.35),
+    0 0 18px rgba(99, 102, 241, 0.25);
+  animation: brandGlow 2.6s ease-in-out infinite;
+  will-change: text-shadow;
+}
+
+.brand-glow::before {
+  content: "";
+  position: absolute;
+  inset: -8px -14px;
+  border-radius: 999px;
+  background: radial-gradient(
+    60% 60% at 50% 50%,
+    rgba(99, 102, 241, 0.45),
+    rgba(99, 102, 241, 0)
+  );
+  opacity: 0.5;
+  filter: blur(10px);
+  animation: brandGlowHalo 2.6s ease-in-out infinite;
+  pointer-events: none;
+  z-index: -1;
+  will-change: transform, opacity;
+}
+
+@keyframes brandGlow {
+  0%,
+  100% {
+    text-shadow: 0 0 8px rgba(99, 102, 241, 0.35),
+      0 0 18px rgba(99, 102, 241, 0.28);
+  }
+  50% {
+    text-shadow: 0 0 14px rgba(99, 102, 241, 0.65),
+      0 0 36px rgba(99, 102, 241, 0.45);
+  }
+}
+
+@keyframes brandGlowHalo {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.08);
+  }
+}
