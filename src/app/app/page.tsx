@@ -63,6 +63,9 @@ export default function OverviewPage() {
   const hasReports = reports.length > 0;
   const hasRisks = risks.length > 0;
   const hasKpis = kpis.length > 0;
+  const kpiCards: Array<Kpi | null> = loading
+    ? Array.from({ length: 4 }, () => null)
+    : kpis;
 
   const riskBadgeClass = useMemo(
     () => (severity: string) =>
@@ -88,12 +91,12 @@ export default function OverviewPage() {
 
       <section className="overflow-hidden rounded-xl bg-white shadow-sm outline-1 outline-black/5 dark:bg-gray-900/60 dark:shadow-none dark:-outline-offset-1 dark:outline-white/10">
         <div className="grid grid-cols-1 gap-px bg-gray-200/70 sm:grid-cols-2 lg:grid-cols-4 dark:bg-white/10">
-          {(loading ? Array.from({ length: 4 }) : kpis).map((stat, index) => (
+          {kpiCards.map((stat, index) => (
             <div
-              key={loading ? `kpi-${index}` : stat.name}
+              key={stat?.name ?? `kpi-${index}`}
               className="bg-white px-4 py-6 sm:px-6 lg:px-8 dark:bg-gray-900"
             >
-              {loading ? (
+              {stat === null ? (
                 <div className="animate-pulse space-y-3">
                   <div className="h-4 w-28 rounded bg-gray-200 dark:bg-white/10" />
                   <div className="h-8 w-32 rounded bg-gray-200 dark:bg-white/10" />

@@ -59,7 +59,9 @@ export default function SitesPage() {
     []
   );
 
-  const cardRows = loading ? Array.from({ length: 6 }) : sites;
+  const cardRows: Array<Site | null> = loading
+    ? Array.from({ length: 6 }, () => null)
+    : sites;
 
   return (
     <div className="space-y-6">
@@ -74,7 +76,7 @@ export default function SitesPage() {
 
       <ul role="list" className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
         {cardRows.map((row, index) =>
-          loading ? (
+          row === null ? (
             <li
               key={`site-loading-${index}`}
               className="col-span-1 flex rounded-md shadow-xs dark:shadow-none"
