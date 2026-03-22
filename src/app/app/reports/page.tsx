@@ -17,6 +17,11 @@ type Report = {
   status: "Reviewing" | "Completed" | "In progress";
   inspector?: string;
   trade?: string;
+  issues: Array<{
+    id: string;
+    title: string;
+    severity: "Low" | "Medium" | "High" | "Critical";
+  }>;
 };
 
 const statusOptions = ["All", "Reviewing", "In progress", "Completed"] as const;
@@ -196,6 +201,7 @@ export default function ReportsPage() {
             <tr>
               <th className="px-6 py-3">Report</th>
               <th className="px-6 py-3">Site</th>
+              <th className="px-6 py-3">Failed items</th>
               <th className="px-6 py-3">Status</th>
               <th className="px-6 py-3">Created</th>
               <th className="px-6 py-3 text-right">Details</th>
@@ -210,6 +216,9 @@ export default function ReportsPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="h-4 w-24 rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="h-4 w-12 rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
                     </td>
                     <td className="px-6 py-4">
                       <div className="h-4 w-20 rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
@@ -232,6 +241,9 @@ export default function ReportsPage() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                       {report.site}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                      {report.issues.length}
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-200">

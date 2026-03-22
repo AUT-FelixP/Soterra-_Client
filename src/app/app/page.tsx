@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { classNames } from "@/lib/classNames";
 
 type Kpi = { name: string; value: string; unit?: string };
 type Report = {
@@ -11,35 +10,52 @@ type Report = {
   site: string;
   createdAt: string;
   status: string;
+  issues: Array<{
+    id: string;
+    title: string;
+    severity: "Low" | "Medium" | "High" | "Critical";
+  }>;
 };
-type Risk = {
-  id: string;
+type TopIssue = {
   title: string;
-  site: string;
-  severity: string;
-  createdAt: string;
+  occurrences: number;
+  highestSeverity: "Low" | "Medium" | "High" | "Critical";
+};
+type ReinspectionBreakdown = {
+  count: number;
+  percentage: number;
+};
+type TrackerIssue = {
+  id: string;
+  reinspections: number;
+  status: "Open" | "Closed";
 };
 
 export default function OverviewPage() {
   const [kpis, setKpis] = useState<Kpi[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
-  const [risks, setRisks] = useState<Risk[]>([]);
+  const [topIssues, setTopIssues] = useState<TopIssue[]>([]);
+  const [totalIssues, setTotalIssues] = useState(0);
+  const [trackerIssues, setTrackerIssues] = useState<TrackerIssue[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
+
     async function load() {
       setLoading(true);
       try {
-        const [kpiRes, reportRes, riskRes] = await Promise.all([
-          fetch("/api/kpis"),
+        const [kpiRes, reportRes, insightsRes, trackerRes] = await Promise.all([
+          fetch("/api/dashboard"),
           fetch("/api/reports?limit=5"),
-          fetch("/api/risks?status=high&limit=5"),
+          fetch("/api/insights"),
+          fetch("/api/issues"),
         ]);
-        const [kpiData, reportData, riskData] = await Promise.all([
+        const [kpiData, reportData, insightsData, trackerData] = await Promise.all([
           kpiRes.json(),
           reportRes.json(),
-          riskRes.json(),
+          insightsRes.json(),
+          trackerRes.json(),
         ]);
 
         if (!isMounted) return;
@@ -47,7 +63,15 @@ export default function OverviewPage() {
         setReports(
           Array.isArray(reportData) ? reportData : reportData?.items ?? []
         );
-        setRisks(Array.isArray(riskData) ? riskData : riskData?.items ?? []);
+        setTopIssues(
+          Array.isArray(insightsData?.topIssues) ? insightsData.topIssues : []
+        );
+        setTotalIssues(
+          typeof insightsData?.totalIssues === "number" ? insightsData.totalIssues : 0
+        );
+        setTrackerIssues(
+          Array.isArray(trackerData) ? trackerData : trackerData?.items ?? []
+        );
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -61,36 +85,27 @@ export default function OverviewPage() {
   }, []);
 
   const hasReports = reports.length > 0;
-  const hasRisks = risks.length > 0;
   const hasKpis = kpis.length > 0;
+  const hasTopIssues = topIssues.length > 0;
+  const openIssues = trackerIssues.filter((issue) => issue.status === "Open").length;
   const kpiCards: Array<Kpi | null> = loading
-    ? Array.from({ length: 4 }, () => null)
+    ? Array.from({ length: 3 }, () => null)
     : kpis;
-
-  const riskBadgeClass = useMemo(
-    () => (severity: string) =>
-      classNames(
-        severity === "Critical"
-          ? "bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
-          : "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
-        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold"
-      ),
-    []
-  );
+  const reinspectionAnalysis = getReinspectionAnalysis(trackerIssues);
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-          Overview
+          Dashboard
         </h1>
         <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-          Snapshot of inspection performance and portfolio risk.
+          Performance overview across uploaded inspection categories.
         </p>
       </div>
 
       <section className="overflow-hidden rounded-xl bg-white shadow-sm outline-1 outline-black/5 dark:bg-gray-900/60 dark:shadow-none dark:-outline-offset-1 dark:outline-white/10">
-        <div className="grid grid-cols-1 gap-px bg-gray-200/70 sm:grid-cols-2 lg:grid-cols-4 dark:bg-white/10">
+        <div className="grid grid-cols-1 gap-px bg-gray-200/70 sm:grid-cols-3 dark:bg-white/10">
           {kpiCards.map((stat, index) => (
             <div
               key={stat?.name ?? `kpi-${index}`}
@@ -129,15 +144,143 @@ export default function OverviewPage() {
         ) : null}
       </section>
 
-      <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
+      <Link
+        href="/app/tracker"
+        className="block rounded-xl bg-linear-to-r from-indigo-600 to-cyan-500 p-[1px] shadow-sm transition hover:shadow-md dark:shadow-none"
+      >
+        <div className="rounded-[calc(0.75rem-1px)] bg-white px-6 py-5 dark:bg-gray-900">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                Live Tracker
+              </p>
+              <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
+                Open issues: {loading ? "..." : openIssues}
+              </p>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Review outstanding inspection items and update their status.
+              </p>
+            </div>
+            <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-300">
+              Open tracker
+            </span>
+          </div>
+        </div>
+      </Link>
+
+      <div className="grid gap-8 xl:grid-cols-[1.3fr_0.7fr]">
+        <section className="overflow-hidden rounded-xl bg-white shadow-sm outline-1 outline-black/5 dark:bg-gray-900/60 dark:shadow-none dark:-outline-offset-1 dark:outline-white/10">
+          <div className="border-b border-gray-200 px-6 py-4 dark:border-white/10">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">
+              Top Failure Types
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Most common issue patterns found across recent inspections.
+            </p>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-white/10">
+              <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:bg-gray-900/60 dark:text-gray-400">
+                <tr>
+                  <th className="px-6 py-3">Failure type</th>
+                  <th className="px-6 py-3">Occurrences</th>
+                  <th className="px-6 py-3">Share</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white dark:divide-white/10 dark:bg-gray-900">
+                {loading
+                  ? Array.from({ length: 4 }).map((_, index) => (
+                      <tr key={`top-issue-skeleton-${index}`}>
+                        <td className="px-6 py-4">
+                          <div className="h-4 w-56 rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="h-4 w-16 rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="h-4 w-24 rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
+                        </td>
+                      </tr>
+                    ))
+                  : topIssues.map((issue) => (
+                      <tr key={issue.title}>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
+                          {issue.title}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                          {issue.occurrences}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                          {formatPercentage(issue.occurrences, totalIssues)}
+                        </td>
+                      </tr>
+                    ))}
+              </tbody>
+            </table>
+          </div>
+
+          {!loading && !hasTopIssues ? (
+            <div className="px-6 py-10 text-sm text-gray-500 dark:text-gray-400">
+              No failure patterns available yet.
+            </div>
+          ) : null}
+        </section>
+
+        <section className="overflow-hidden rounded-xl bg-white shadow-sm outline-1 outline-black/5 dark:bg-gray-900/60 dark:shadow-none dark:-outline-offset-1 dark:outline-white/10">
+          <div className="border-b border-gray-200 px-6 py-4 dark:border-white/10">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">
+              Re-inspection Analysis
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Distribution of issues by how many follow-up inspections they needed.
+            </p>
+          </div>
+
+          <div className="px-6 py-5">
+            {loading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <div
+                    key={`reinspection-skeleton-${index}`}
+                    className="h-4 w-40 rounded bg-gray-200 dark:bg-white/10 animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : reinspectionAnalysis.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                No re-inspection data available yet.
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {reinspectionAnalysis.map((item) => (
+                  <li
+                    key={item.count}
+                    className="flex items-center justify-between gap-4 rounded-lg bg-gray-50 px-4 py-3 dark:bg-white/5"
+                  >
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      {item.count} re-inspection{item.count === 1 ? "" : "s"}
+                    </span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      {item.percentage}%
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
+      </div>
+
+      <div>
         <section className="overflow-hidden rounded-xl bg-white shadow-sm outline-1 outline-black/5 dark:bg-gray-900/60 dark:shadow-none dark:-outline-offset-1 dark:outline-white/10">
           <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-white/10">
             <div>
               <h2 className="text-base font-semibold text-gray-900 dark:text-white">
-                Recent Reports
+                Latest Inspections
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Latest inspection reports across active sites.
+                Most recent uploads across all inspection categories.
               </p>
             </div>
             <Link
@@ -152,8 +295,9 @@ export default function OverviewPage() {
             <table className="min-w-full divide-y divide-gray-200 dark:divide-white/10">
               <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:bg-gray-900/60 dark:text-gray-400">
                 <tr>
-                  <th className="px-6 py-3">Report</th>
+                  <th className="px-6 py-3">Inspection</th>
                   <th className="px-6 py-3">Site</th>
+                  <th className="px-6 py-3">Failed items</th>
                   <th className="px-6 py-3">Status</th>
                   <th className="px-6 py-3">Created</th>
                 </tr>
@@ -167,6 +311,9 @@ export default function OverviewPage() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="h-4 w-28 rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="h-4 w-12 rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
                         </td>
                         <td className="px-6 py-4">
                           <div className="h-4 w-20 rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
@@ -183,6 +330,9 @@ export default function OverviewPage() {
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                           {report.site}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                          {report.issues.length}
                         </td>
                         <td className="px-6 py-4 text-sm">
                           <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-200">
@@ -203,55 +353,7 @@ export default function OverviewPage() {
 
           {!loading && !hasReports ? (
             <div className="px-6 py-10 text-sm text-gray-500 dark:text-gray-400">
-              No recent reports yet.
-            </div>
-          ) : null}
-        </section>
-
-        <section className="overflow-hidden rounded-xl bg-white shadow-sm outline-1 outline-black/5 dark:bg-gray-900/60 dark:shadow-none dark:-outline-offset-1 dark:outline-white/10">
-          <div className="border-b border-gray-200 px-6 py-4 dark:border-white/10">
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">
-              Risk Alerts
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              High severity issues flagged in the last 7 days.
-            </p>
-          </div>
-          <ul className="divide-y divide-gray-200 dark:divide-white/10">
-            {loading
-              ? Array.from({ length: 5 }).map((_, index) => (
-                  <li key={`risk-skeleton-${index}`} className="px-6 py-5">
-                    <div className="space-y-3 animate-pulse">
-                      <div className="h-4 w-32 rounded bg-gray-200 dark:bg-white/10" />
-                      <div className="h-4 w-48 rounded bg-gray-200 dark:bg-white/10" />
-                    </div>
-                  </li>
-                ))
-              : risks.map((risk) => (
-                  <li key={risk.id} className="px-6 py-5">
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                          {risk.title}
-                        </p>
-                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                          {risk.site}
-                        </p>
-                      </div>
-                      <span className={riskBadgeClass(risk.severity)}>
-                        {risk.severity}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">
-                      {risk.createdAt}
-                    </p>
-                  </li>
-                ))}
-          </ul>
-
-          {!loading && !hasRisks ? (
-            <div className="px-6 py-10 text-sm text-gray-500 dark:text-gray-400">
-              No high risk alerts found.
+              No inspection uploads yet.
             </div>
           ) : null}
         </section>
@@ -259,3 +361,31 @@ export default function OverviewPage() {
     </div>
   );
 }
+
+function formatPercentage(part: number, total: number) {
+  if (total === 0) {
+    return "0%";
+  }
+
+  return `${Math.round((part / total) * 100)}%`;
+}
+
+function getReinspectionAnalysis(issues: TrackerIssue[]): ReinspectionBreakdown[] {
+  if (issues.length === 0) {
+    return [];
+  }
+
+  const counts = new Map<number, number>();
+
+  for (const issue of issues) {
+    counts.set(issue.reinspections, (counts.get(issue.reinspections) ?? 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([count, issueCount]) => ({
+      count,
+      percentage: Math.round((issueCount / issues.length) * 100),
+    }));
+}
+

@@ -17,9 +17,7 @@ import {
   Bars3Icon,
   Cog6ToothIcon,
   DocumentChartBarIcon,
-  ExclamationTriangleIcon,
   HomeIcon,
-  LightBulbIcon,
   MapPinIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
@@ -29,18 +27,14 @@ import { AUTH_STORAGE_KEY } from "@/lib/auth";
 const navigation = [
   { name: "Overview", href: "/app", icon: HomeIcon },
   { name: "Reports", href: "/app/reports", icon: DocumentChartBarIcon },
-  { name: "Risks", href: "/app/risks", icon: ExclamationTriangleIcon },
-  { name: "Sites", href: "/app/sites", icon: MapPinIcon },
-  { name: "Insights", href: "/app/insights", icon: LightBulbIcon },
+  { name: "Tracker", href: "/app/tracker", icon: MapPinIcon },
   { name: "Settings", href: "/app/settings", icon: Cog6ToothIcon },
 ];
 
 const breadcrumbMap = new Map([
   ["/app", "Overview"],
   ["/app/reports", "Reports"],
-  ["/app/risks", "Risks"],
-  ["/app/sites", "Sites"],
-  ["/app/insights", "Insights"],
+  ["/app/tracker", "Tracker"],
   ["/app/settings", "Settings"],
 ]);
 
@@ -247,14 +241,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   className="block px-4 py-2 text-sm text-gray-700 data-focus:bg-gray-50 data-focus:text-gray-900 data-focus:outline-hidden dark:text-gray-300 dark:data-focus:bg-white/5 dark:data-focus:text-white"
                 >
                   Account settings
-                </Link>
-              </MenuItem>
-              <MenuItem>
-                <Link
-                  href="/app/insights"
-                  className="block px-4 py-2 text-sm text-gray-700 data-focus:bg-gray-50 data-focus:text-gray-900 data-focus:outline-hidden dark:text-gray-300 dark:data-focus:bg-white/5 dark:data-focus:text-white"
-                >
-                  Insights
                 </Link>
               </MenuItem>
               <MenuItem>

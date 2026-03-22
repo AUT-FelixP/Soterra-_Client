@@ -1,14 +1,14 @@
-﻿import { NextRequest, NextResponse } from "next/server";
-import { getSites } from "@/lib/mockSites";
+import { NextRequest, NextResponse } from "next/server";
+import { getTrackerIssues } from "@/lib/trackerIssues";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status");
+  let items = getTrackerIssues();
 
-  let items = getSites();
   if (status) {
     items = items.filter(
-      (site) => site.status.toLowerCase() === status.toLowerCase()
+      (issue) => issue.status.toLowerCase() === status.toLowerCase()
     );
   }
 

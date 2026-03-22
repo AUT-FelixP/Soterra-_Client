@@ -1,3 +1,5 @@
+import { addIssue } from "@/lib/mockIssues";
+
 export type ReportIssue = {
   id: string;
   title: string;
@@ -145,23 +147,37 @@ export function addReport(payload: {
   trade?: string;
   createdAt?: string;
 }) {
+  const createdAt = payload.createdAt ?? new Date().toISOString().slice(0, 10);
+  const reportIssueId = `issue-${Date.now()}-1`;
   const newReport: ReportRecord = {
     id: `rpt-${Math.floor(1000 + Math.random() * 9000)}`,
     project: payload.project,
     site: payload.site,
-    createdAt: payload.createdAt ?? new Date().toISOString().slice(0, 10),
+    createdAt,
     status: payload.status,
     inspector: payload.inspector ?? "Soterra Bot",
     trade: payload.trade ?? "General",
     issues: [
       {
-        id: `issue-${Date.now()}-1`,
-        title: "Initial AI extraction pending review",
+        id: reportIssueId,
+        title: "AI extraction pending review",
         severity: "Medium",
       },
     ],
   };
 
   reports.unshift(newReport);
+
+  for (const issue of newReport.issues) {
+    addIssue({
+      id: issue.id,
+      description: issue.title,
+      site: newReport.site,
+      dateIdentified: newReport.createdAt,
+      status: "Open",
+      reinspections: 0,
+    });
+  }
+
   return newReport;
 }
