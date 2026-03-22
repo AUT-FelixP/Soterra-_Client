@@ -23,10 +23,18 @@ export async function PATCH(
   const { id } = await params;
   const body = await request.json().catch(() => ({}));
   const status = body?.status;
+  const reinspections = body?.reinspections;
 
   seedIssueFromReport(id);
   const item = updateIssue(id, {
-    status: status === "Open" || status === "Closed" ? status : undefined,
+    status:
+      status === "Open" || status === "Ready" || status === "Closed"
+        ? status
+        : undefined,
+    reinspections:
+      typeof reinspections === "number" && reinspections >= 0
+        ? reinspections
+        : undefined,
   });
 
   if (!item) {

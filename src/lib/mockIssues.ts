@@ -3,7 +3,7 @@ export type IssueRecord = {
   description: string;
   site: string;
   dateIdentified: string;
-  status: "Open" | "Closed";
+  status: "Open" | "Ready" | "Closed";
   reinspections: number;
   closedAt?: string;
 };
@@ -41,7 +41,7 @@ export function addIssue(payload: {
   description: string;
   site: string;
   dateIdentified?: string;
-  status?: "Open" | "Closed";
+  status?: "Open" | "Ready" | "Closed";
   reinspections?: number;
   closedAt?: string;
 }) {
@@ -61,7 +61,7 @@ export function addIssue(payload: {
 
 export function updateIssue(
   id: string,
-  updates: { status?: "Open" | "Closed" }
+  updates: { status?: "Open" | "Ready" | "Closed"; reinspections?: number }
 ) {
   const index = issues.findIndex((issue) => issue.id === id);
 

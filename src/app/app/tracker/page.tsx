@@ -8,7 +8,7 @@ type Issue = {
   id: string;
   description: string;
   site: string;
-  status: "Open" | "Closed";
+  status: "Open" | "Ready" | "Closed";
   dateIdentified: string;
   reinspections: number;
   daysOpen: number;
@@ -18,6 +18,8 @@ type Issue = {
 const statusClasses = {
   Open:
     "inline-flex items-center rounded-full bg-red-50 px-2 py-1 text-xs font-medium text-red-700 dark:bg-red-400/10 dark:text-red-400",
+  Ready:
+    "inline-flex items-center rounded-full bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 dark:bg-amber-400/10 dark:text-amber-300",
   Closed:
     "inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700 dark:bg-green-400/10 dark:text-green-400",
 } as const;
@@ -25,6 +27,7 @@ const statusClasses = {
 export default function TrackerPage() {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingIssueId, setPendingIssueId] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -53,19 +56,21 @@ export default function TrackerPage() {
     };
   }, []);
 
-  async function updateIssueStatus(
+  async function updateIssue(
     issueId: string,
-    status: Issue["status"]
+    updates: Partial<Pick<Issue, "status" | "reinspections">>
   ) {
+    setPendingIssueId(issueId);
     const response = await fetch(`/api/issues/${issueId}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify(updates),
     }).catch(() => null);
 
     if (!response?.ok) {
+      setPendingIssueId(null);
       return;
     }
 
@@ -75,10 +80,11 @@ export default function TrackerPage() {
     setIssues((prev) =>
       prev.map((issue) =>
         issue.id === issueId
-          ? updatedIssue ?? { ...issue, status }
+          ? updatedIssue ?? { ...issue, ...updates }
           : issue
       )
     );
+    setPendingIssueId(null);
   }
 
   function generateEmail(issue: Issue) {
@@ -90,6 +96,13 @@ export default function TrackerPage() {
     );
 
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  }
+
+  function markReadyForInspection(issue: Issue) {
+    return updateIssue(issue.id, {
+      status: "Ready",
+      reinspections: issue.reinspections + 1,
+    });
   }
 
   return (
@@ -155,9 +168,9 @@ export default function TrackerPage() {
                       {issue.reinspections}
                     </td>
                     <td className="px-4 py-4 text-sm">
-                      <Menu as="div" className="relative inline-block">
+                      <Menu as="div" className="inline-block">
                         <MenuButton
-                          className={`${statusClasses[issue.status]} inline-flex items-center gap-x-1.5 border border-transparent shadow-xs transition hover:brightness-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:shadow-none dark:focus-visible:outline-indigo-500`}
+                          className={`${statusClasses[issue.status]} inline-flex items-center gap-x-1.5 border border-transparent px-3 py-1.5 text-sm shadow-xs transition hover:brightness-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:shadow-none dark:focus-visible:outline-indigo-500`}
                         >
                           {issue.status}
                           <ChevronDownIcon
@@ -167,45 +180,76 @@ export default function TrackerPage() {
                         </MenuButton>
 
                         <MenuItems
+                          anchor="bottom end"
+                          portal
                           transition
-                          className="absolute right-0 z-10 mt-2 w-44 origin-top-right rounded-md bg-white py-1 shadow-lg outline-1 outline-black/5 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in dark:bg-gray-800 dark:shadow-none dark:-outline-offset-1 dark:outline-white/10"
+                          className="z-50 w-56 [--anchor-gap:8px] rounded-xl bg-white p-1 shadow-lg outline-1 outline-black/5 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in dark:bg-gray-800 dark:shadow-none dark:-outline-offset-1 dark:outline-white/10"
                         >
-                          {issue.status === "Open" ? (
+                          {issue.status !== "Ready" ? (
                             <MenuItem>
                               <button
                                 type="button"
+                                disabled={pendingIssueId === issue.id}
+                                onClick={() => markReadyForInspection(issue)}
+                                className="block w-full rounded-lg px-4 py-3 text-left text-sm font-medium text-gray-700 data-focus:bg-gray-100 data-focus:text-gray-900 data-focus:outline-hidden disabled:opacity-60 dark:text-gray-300 dark:data-focus:bg-white/5 dark:data-focus:text-white"
+                              >
+                                Mark ready for inspection
+                              </button>
+                            </MenuItem>
+                          ) : null}
+                          {issue.status !== "Closed" ? (
+                            <MenuItem>
+                              <button
+                                type="button"
+                                disabled={pendingIssueId === issue.id}
                                 onClick={() =>
-                                  updateIssueStatus(issue.id, "Closed")
+                                  updateIssue(issue.id, { status: "Closed" })
                                 }
-                                className="block w-full px-4 py-2 text-left text-sm text-gray-700 data-focus:bg-gray-100 data-focus:text-gray-900 data-focus:outline-hidden dark:text-gray-300 dark:data-focus:bg-white/5 dark:data-focus:text-white"
+                                className="block w-full rounded-lg px-4 py-3 text-left text-sm font-medium text-gray-700 data-focus:bg-gray-100 data-focus:text-gray-900 data-focus:outline-hidden disabled:opacity-60 dark:text-gray-300 dark:data-focus:bg-white/5 dark:data-focus:text-white"
                               >
                                 Mark passed
                               </button>
                             </MenuItem>
-                          ) : (
+                          ) : null}
+                          {issue.status !== "Open" ? (
                             <MenuItem>
                               <button
                                 type="button"
+                                disabled={pendingIssueId === issue.id}
                                 onClick={() =>
-                                  updateIssueStatus(issue.id, "Open")
+                                  updateIssue(issue.id, { status: "Open" })
                                 }
-                                className="block w-full px-4 py-2 text-left text-sm text-gray-700 data-focus:bg-gray-100 data-focus:text-gray-900 data-focus:outline-hidden dark:text-gray-300 dark:data-focus:bg-white/5 dark:data-focus:text-white"
+                                className="block w-full rounded-lg px-4 py-3 text-left text-sm font-medium text-gray-700 data-focus:bg-gray-100 data-focus:text-gray-900 data-focus:outline-hidden disabled:opacity-60 dark:text-gray-300 dark:data-focus:bg-white/5 dark:data-focus:text-white"
                               >
                                 Reopen
                               </button>
                             </MenuItem>
-                          )}
+                          ) : null}
                         </MenuItems>
                       </Menu>
                     </td>
                     <td className="px-4 py-4 text-right text-sm">
-                      <button
-                        type="button"
-                        onClick={() => generateEmail(issue)}
-                        className="text-indigo-600 hover:text-indigo-500 dark:text-indigo-300 dark:hover:text-indigo-200"
-                      >
-                        Send email
-                      </button>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          disabled={pendingIssueId === issue.id}
+                          onClick={() =>
+                            updateIssue(issue.id, {
+                              reinspections: issue.reinspections + 1,
+                            })
+                          }
+                          className="rounded-full bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 shadow-xs inset-ring inset-ring-gray-300 hover:bg-gray-50 disabled:opacity-60 dark:bg-white/10 dark:text-white dark:shadow-none dark:inset-ring-white/5 dark:hover:bg-white/20"
+                        >
+                          Add re-inspection
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => generateEmail(issue)}
+                          className="rounded-full bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 shadow-xs inset-ring inset-ring-gray-300 hover:bg-gray-50 dark:bg-white/10 dark:text-white dark:shadow-none dark:inset-ring-white/5 dark:hover:bg-white/20"
+                        >
+                          Send email
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -222,7 +266,7 @@ function mapIssue(issue: {
   id: string;
   description: string;
   site: string;
-  status: "Open" | "Closed";
+  status: "Open" | "Ready" | "Closed";
   dateIdentified: string;
   reinspections: number;
   closedAt?: string;

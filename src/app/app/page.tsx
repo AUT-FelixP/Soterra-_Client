@@ -28,7 +28,7 @@ type ReinspectionBreakdown = {
 type TrackerIssue = {
   id: string;
   reinspections: number;
-  status: "Open" | "Closed";
+  status: "Open" | "Ready" | "Closed";
 };
 
 export default function OverviewPage() {

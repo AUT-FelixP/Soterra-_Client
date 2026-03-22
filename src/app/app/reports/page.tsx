@@ -204,7 +204,7 @@ export default function ReportsPage() {
               <th className="px-6 py-3">Failed items</th>
               <th className="px-6 py-3">Status</th>
               <th className="px-6 py-3">Created</th>
-              <th className="px-6 py-3 text-right">Details</th>
+              <th className="px-6 py-3 text-right">Project report</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white dark:divide-white/10 dark:bg-gray-900">
@@ -227,7 +227,7 @@ export default function ReportsPage() {
                       <div className="h-4 w-28 rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
                     </td>
                     <td className="px-6 py-4">
-                      <div className="h-4 w-16 rounded bg-gray-200 dark:bg-white/10 animate-pulse ml-auto" />
+                      <div className="ml-auto h-4 w-24 rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
                     </td>
                   </tr>
                 ))
@@ -260,9 +260,9 @@ export default function ReportsPage() {
                     <td className="px-6 py-4 text-right text-sm font-medium">
                       <Link
                         href={`/app/reports/${report.id}`}
-                        className="text-indigo-600 hover:text-indigo-500 dark:text-indigo-300 dark:hover:text-indigo-200"
+                        className="rounded-full bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 shadow-xs inset-ring inset-ring-gray-300 hover:bg-gray-50 dark:bg-white/10 dark:text-white dark:shadow-none dark:inset-ring-white/5 dark:hover:bg-white/20"
                       >
-                        View
+                        View report
                       </Link>
                     </td>
                   </tr>
