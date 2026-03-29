@@ -1,6 +1,9 @@
 import Link from "next/link";
 import FinalCta from "./components/FinalCta";
 
+const primaryButtonClassName =
+  "rounded-full bg-[#6D5EF5] px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-[#5f51e6] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6D5EF5] dark:bg-[#6D5EF5] dark:shadow-none dark:hover:bg-[#7a6bff] dark:focus-visible:outline-[#6D5EF5]";
+
 const navLinks = [
   { label: "Product", href: "#product" },
   { label: "Solutions", href: "#solutions" },
@@ -64,13 +67,13 @@ export default function LandingPage() {
           <div className="hidden items-center gap-3 sm:flex">
             <Link
               href="/login"
-              className="rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 shadow-xs inset-ring inset-ring-gray-300 hover:bg-gray-50 dark:bg-white/10 dark:text-white dark:shadow-none dark:inset-ring-white/5 dark:hover:bg-white/20"
+              className={primaryButtonClassName}
             >
               Login
             </Link>
             <Link
               href="/contact"
-              className="rounded-full bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:bg-indigo-500 dark:shadow-none dark:hover:bg-indigo-400 dark:focus-visible:outline-indigo-500"
+              className={primaryButtonClassName}
             >
               Request a Demo
             </Link>
@@ -102,7 +105,7 @@ export default function LandingPage() {
           <div className="mt-10 flex flex-wrap items-center gap-4">
             <Link
               href="/contact"
-              className="rounded-full bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:bg-indigo-500 dark:shadow-none dark:hover:bg-indigo-400 dark:focus-visible:outline-indigo-500"
+              className="rounded-full bg-[#6D5EF5] px-5 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-[#5f51e6] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6D5EF5] dark:bg-[#6D5EF5] dark:shadow-none dark:hover:bg-[#7a6bff] dark:focus-visible:outline-[#6D5EF5]"
             >
               Request a Demo
             </Link>
@@ -268,7 +271,7 @@ export default function LandingPage() {
               <div className="mt-6">
                 <Link
                   href={segment.href}
-                  className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs inset-ring inset-ring-gray-300 hover:bg-gray-50 dark:bg-white/10 dark:text-white dark:shadow-none dark:inset-ring-white/5 dark:hover:bg-white/20"
+                  className="inline-flex items-center justify-center rounded-full bg-[#6D5EF5] px-4 py-2 text-sm font-semibold text-white shadow-xs transition hover:bg-[#5f51e6] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6D5EF5] dark:bg-[#6D5EF5] dark:shadow-none dark:hover:bg-[#7a6bff] dark:focus-visible:outline-[#6D5EF5]"
                 >
                   Learn more
                 </Link>

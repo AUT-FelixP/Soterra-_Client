@@ -17,6 +17,7 @@ import {
   Bars3Icon,
   Cog6ToothIcon,
   DocumentChartBarIcon,
+  ExclamationTriangleIcon,
   HomeIcon,
   MapPinIcon,
   XMarkIcon,
@@ -26,6 +27,7 @@ import { AUTH_STORAGE_KEY } from "@/lib/auth";
 
 const navigation = [
   { name: "Overview", href: "/app", icon: HomeIcon },
+  { name: "Inspection Risk", href: "/app/inspection-risk", icon: ExclamationTriangleIcon },
   { name: "Reports", href: "/app/reports", icon: DocumentChartBarIcon },
   { name: "Tracker", href: "/app/tracker", icon: MapPinIcon },
   { name: "Settings", href: "/app/settings", icon: Cog6ToothIcon },
@@ -33,6 +35,7 @@ const navigation = [
 
 const breadcrumbMap = new Map([
   ["/app", "Overview"],
+  ["/app/inspection-risk", "Inspection Risk"],
   ["/app/reports", "Reports"],
   ["/app/tracker", "Tracker"],
   ["/app/settings", "Settings"],

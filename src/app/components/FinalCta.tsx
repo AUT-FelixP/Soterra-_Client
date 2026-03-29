@@ -160,7 +160,7 @@ export default function FinalCta() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="inline-flex w-full items-center justify-center rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-indigo-500 dark:shadow-none dark:hover:bg-indigo-400 dark:focus-visible:outline-indigo-500"
+                className="inline-flex w-full items-center justify-center rounded-full bg-[#6D5EF5] px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-[#5f51e6] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6D5EF5] disabled:cursor-not-allowed disabled:opacity-70 dark:bg-[#6D5EF5] dark:shadow-none dark:hover:bg-[#7a6bff] dark:focus-visible:outline-[#6D5EF5]"
               >
                 {isSubmitting ? "Submitting..." : "Request a Demo"}
               </button>
