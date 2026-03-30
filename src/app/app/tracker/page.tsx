@@ -350,7 +350,7 @@ export default function TrackerPage() {
     <div className="space-y-8">
       <div className="rounded-lg bg-gray-800 px-6 py-8 shadow-sm dark:bg-gray-800/70">
         <h1 className="mt-3 text-3xl font-bold tracking-tight text-white">
-          {data?.title ?? "Live Tracker"}
+          {data?.title ?? "Live tracker"}
         </h1>
         <p className="mt-3 max-w-3xl text-sm text-gray-300">
           {data?.description ?? "Open inspection issues extracted from reports."}

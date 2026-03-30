@@ -67,7 +67,7 @@ export default function FinalCta() {
         title: "Request sent",
         message: "We will reach out shortly to schedule a demo.",
       });
-    } catch (error) {
+    } catch {
       showToast({
         tone: "error",
         title: "Something went wrong",

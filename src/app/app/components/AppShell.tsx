@@ -15,11 +15,13 @@ import {
 } from "@headlessui/react";
 import {
   Bars3Icon,
+  BuildingOffice2Icon,
   Cog6ToothIcon,
-  DocumentChartBarIcon,
   ExclamationTriangleIcon,
   HomeIcon,
+  LightBulbIcon,
   MapPinIcon,
+  PresentationChartLineIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { classNames } from "@/lib/classNames";
@@ -27,17 +29,21 @@ import { AUTH_STORAGE_KEY } from "@/lib/auth";
 
 const navigation = [
   { name: "Overview", href: "/app", icon: HomeIcon },
-  { name: "Inspection Risk", href: "/app/inspection-risk", icon: ExclamationTriangleIcon },
-  { name: "Reports", href: "/app/reports", icon: DocumentChartBarIcon },
-  { name: "Tracker", href: "/app/tracker", icon: MapPinIcon },
+  { name: "Company", href: "/app/company", icon: BuildingOffice2Icon },
+  { name: "Live tracker", href: "/app/tracker", icon: MapPinIcon },
+  { name: "Performance", href: "/app/performance", icon: PresentationChartLineIcon },
+  { name: "Insights", href: "/app/insights", icon: LightBulbIcon },
+  { name: "Risk", href: "/app/risk", icon: ExclamationTriangleIcon },
   { name: "Settings", href: "/app/settings", icon: Cog6ToothIcon },
 ];
 
 const breadcrumbMap = new Map([
   ["/app", "Overview"],
-  ["/app/inspection-risk", "Inspection Risk"],
-  ["/app/reports", "Reports"],
-  ["/app/tracker", "Tracker"],
+  ["/app/company", "Company"],
+  ["/app/tracker", "Live tracker"],
+  ["/app/performance", "Performance"],
+  ["/app/insights", "Insights"],
+  ["/app/risk", "Risk"],
   ["/app/settings", "Settings"],
 ]);
 
@@ -53,7 +59,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   const breadcrumbs = useMemo(() => {
-    const label = breadcrumbMap.get(pathname) ?? "Overview";
+    let label = breadcrumbMap.get(pathname) ?? "Overview";
+
+    if (pathname.startsWith("/app/company/")) {
+      label = "Project";
+    }
+
     return [
       { name: "App", href: "/app", current: pathname === "/app" },
       { name: label, href: pathname, current: true },
