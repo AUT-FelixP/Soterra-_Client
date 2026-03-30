@@ -47,7 +47,7 @@ export default function RiskPage() {
   }, [site, windowValue, inspectionId]);
 
   if (!data) {
-    return <div className="h-96 animate-pulse rounded-3xl bg-white/5" />;
+    return <div className="h-96 animate-pulse rounded-3xl bg-slate-200 dark:bg-white/5" />;
   }
 
   return (
@@ -90,7 +90,11 @@ export default function RiskPage() {
             {
               key: "type",
               header: "Type",
-              render: (row) => <span className="font-medium text-white">{row.type}</span>,
+              render: (row) => (
+                <span className="font-medium text-slate-900 dark:text-white">
+                  {row.type}
+                </span>
+              ),
             },
             { key: "site", header: "Site", render: (row) => row.site },
             {
@@ -102,7 +106,13 @@ export default function RiskPage() {
               key: "daysAway",
               header: "Days away",
               render: (row) => (
-                <span className={row.daysAway <= 7 ? "font-semibold text-rose-300" : "text-slate-200"}>
+                <span
+                  className={
+                    row.daysAway <= 7
+                      ? "font-semibold text-rose-600 dark:text-rose-300"
+                      : "text-slate-700 dark:text-slate-200"
+                  }
+                >
                   {row.daysAway}
                 </span>
               ),
@@ -121,7 +131,7 @@ export default function RiskPage() {
                 <button
                   type="button"
                   onClick={() => setInspectionId(row.id)}
-                  className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-500/20"
+                  className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-indigo-100 dark:bg-white/10 dark:text-white dark:hover:bg-indigo-500/20"
                 >
                   View insights
                 </button>
@@ -141,7 +151,11 @@ export default function RiskPage() {
             {
               key: "issue",
               header: "Issue",
-              render: (row) => <span className="font-medium text-white">{row.issue}</span>,
+              render: (row) => (
+                <span className="font-medium text-slate-900 dark:text-white">
+                  {row.issue}
+                </span>
+              ),
             },
             {
               key: "historicalFailCount",

@@ -63,7 +63,7 @@ export default function CompanyPage() {
               render: (row) => (
                 <Link
                   href={`/app/company/${row.slug}`}
-                  className="font-semibold text-indigo-200 transition hover:text-white"
+                  className="font-semibold text-indigo-700 transition hover:text-indigo-900 dark:text-indigo-200 dark:hover:text-white"
                 >
                   {row.name}
                 </Link>
@@ -120,7 +120,7 @@ export default function CompanyPage() {
               key: "type",
               header: "Type",
               render: (row) => (
-                <span className="font-medium text-white">{row.type}</span>
+                <span className="font-medium text-slate-900 dark:text-white">{row.type}</span>
               ),
             },
             {
@@ -170,11 +170,11 @@ function toneClass(tone?: "default" | "critical" | "warning" | "success") {
   if (tone === "critical") return "font-semibold text-rose-300";
   if (tone === "success") return "font-semibold text-emerald-300";
   if (tone === "warning") return "font-semibold text-amber-300";
-  return "text-slate-200";
+  return "text-slate-700 dark:text-slate-200";
 }
 
 function impactTone(tone?: "critical" | "success") {
-  if (tone === "critical") return "text-4xl font-semibold tracking-tight text-rose-300";
-  if (tone === "success") return "text-4xl font-semibold tracking-tight text-emerald-300";
-  return "text-4xl font-semibold tracking-tight text-white";
+  if (tone === "critical") return "text-4xl font-semibold tracking-tight text-rose-600 dark:text-rose-300";
+  if (tone === "success") return "text-4xl font-semibold tracking-tight text-emerald-600 dark:text-emerald-300";
+  return "text-4xl font-semibold tracking-tight text-slate-900 dark:text-white";
 }

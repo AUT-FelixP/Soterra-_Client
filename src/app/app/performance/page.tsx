@@ -71,7 +71,11 @@ export default function PerformancePage() {
             {
               key: "issue",
               header: "Issue",
-              render: (row) => <span className="font-medium text-white">{row.issue}</span>,
+              render: (row) => (
+                <span className="font-medium text-slate-900 dark:text-white">
+                  {row.issue}
+                </span>
+              ),
             },
             { key: "count", header: "Fail count", render: (row) => row.failCount },
             {
@@ -103,7 +107,11 @@ export default function PerformancePage() {
             {
               key: "issue",
               header: "Issue",
-              render: (row) => <span className="font-medium text-white">{row.issue}</span>,
+              render: (row) => (
+                <span className="font-medium text-slate-900 dark:text-white">
+                  {row.issue}
+                </span>
+              ),
             },
             {
               key: "likelihood",
@@ -135,7 +143,7 @@ export default function PerformancePage() {
           rows={data.recurringRisks}
         />
 
-        <div className="mt-5 rounded-2xl border border-white/10 bg-slate-950/55 px-4 py-4 text-sm text-slate-300">
+        <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-700 dark:border-white/10 dark:bg-slate-950/55 dark:text-slate-300">
           {data.recurrenceSummary}
         </div>
       </DashboardSection>

@@ -83,7 +83,11 @@ export default function InsightsPage() {
             {
               key: "issue",
               header: "Issue",
-              render: (row) => <span className="font-medium text-white">{row.issue}</span>,
+              render: (row) => (
+                <span className="font-medium text-slate-900 dark:text-white">
+                  {row.issue}
+                </span>
+              ),
             },
             {
               key: "occurrence",
@@ -108,9 +112,9 @@ export default function InsightsPage() {
 }
 
 function trendTone(trend: "Increasing" | "Stable" | "Improving") {
-  if (trend === "Increasing") return "font-semibold text-rose-300";
-  if (trend === "Stable") return "font-semibold text-amber-300";
-  return "font-semibold text-emerald-300";
+  if (trend === "Increasing") return "font-semibold text-rose-600 dark:text-rose-300";
+  if (trend === "Stable") return "font-semibold text-amber-600 dark:text-amber-300";
+  return "font-semibold text-emerald-600 dark:text-emerald-300";
 }
 
 function trendIcon(trend: "Increasing" | "Stable" | "Improving") {

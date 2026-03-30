@@ -62,12 +62,17 @@ export default function OverviewPage() {
         action={<DashboardButtonLink href={data.liveTracker.href} label="Open tracker" />}
       >
         Open issues:{" "}
-        <strong className="text-rose-200">{data.liveTracker.openIssues}</strong>
+        <strong className="text-rose-600 dark:text-rose-200">
+          {data.liveTracker.openIssues}
+        </strong>
         {"  ·  "}
-        Overdue: <strong className="text-rose-200">{data.liveTracker.overdue}</strong>
+        Overdue:{" "}
+        <strong className="text-rose-600 dark:text-rose-200">
+          {data.liveTracker.overdue}
+        </strong>
         {"  ·  "}
         Ready for inspection:{" "}
-        <strong className="text-emerald-200">
+        <strong className="text-emerald-600 dark:text-emerald-200">
           {data.liveTracker.readyForInspection}
         </strong>
       </DashboardHighlight>
@@ -88,14 +93,18 @@ export default function OverviewPage() {
             {data.upcomingRisks.map((risk) => (
               <div
                 key={risk.title}
-                className="flex items-start justify-between gap-4 rounded-2xl border border-white/10 bg-slate-950/55 px-4 py-4"
+                className="flex items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 dark:border-white/10 dark:bg-slate-950/55"
               >
                 <div>
-                  <p className="text-sm font-semibold text-white">{risk.title}</p>
-                  <p className="mt-1 text-sm text-slate-400">{risk.subtitle}</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                    {risk.title}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                    {risk.subtitle}
+                  </p>
                 </div>
                 <div className="space-y-2 text-right">
-                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
+                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
                     {risk.daysAway} days
                   </p>
                   <DashboardBadge label={risk.level} tone={riskTone(risk.level)} />
@@ -115,7 +124,11 @@ export default function OverviewPage() {
             {
               key: "issue",
               header: "Issue",
-              render: (row) => <span className="font-medium text-white">{row.issue}</span>,
+              render: (row) => (
+                <span className="font-medium text-slate-900 dark:text-white">
+                  {row.issue}
+                </span>
+              ),
             },
             {
               key: "count",
@@ -163,11 +176,11 @@ export default function OverviewPage() {
           title="Inspection readiness"
           description="Inspections called before work complete"
         >
-          <div className="rounded-2xl border border-white/10 bg-slate-950/55 px-5 py-6">
-            <p className="text-5xl font-semibold tracking-tight text-amber-200">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-6 dark:border-white/10 dark:bg-slate-950/55">
+            <p className="text-5xl font-semibold tracking-tight text-amber-600 dark:text-amber-200">
               {data.inspectionReadiness.value}
             </p>
-            <p className="mt-3 max-w-sm text-sm text-slate-300">
+            <p className="mt-3 max-w-sm text-sm text-slate-700 dark:text-slate-300">
               {data.inspectionReadiness.description}
             </p>
           </div>
@@ -180,7 +193,7 @@ export default function OverviewPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             {data.closeOutPerformance.map((item) => (
               <DashboardSubCard key={item.label} title={item.label}>
-                <p className="text-4xl font-semibold tracking-tight text-white">
+                <p className="text-4xl font-semibold tracking-tight text-slate-900 dark:text-white">
                   {item.value}
                 </p>
               </DashboardSubCard>

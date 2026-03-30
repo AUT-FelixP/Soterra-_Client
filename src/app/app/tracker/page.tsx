@@ -110,9 +110,9 @@ type SelectedMatrixCell = {
 };
 
 const statusClasses: Record<TrackerIssueStatus, string> = {
-  Open: "bg-rose-500/15 text-rose-200 ring-1 ring-rose-300/20",
-  Ready: "bg-amber-500/15 text-amber-200 ring-1 ring-amber-300/20",
-  Closed: "bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-300/20",
+  Open: "bg-rose-100 text-rose-700 ring-1 ring-rose-200 dark:bg-rose-500/15 dark:text-rose-200 dark:ring-rose-300/20",
+  Ready: "bg-amber-100 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-amber-300/20",
+  Closed: "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-300/20",
 };
 
 export default function TrackerPage() {
@@ -348,23 +348,23 @@ export default function TrackerPage() {
 
   return (
     <div className="space-y-8">
-      <div className="rounded-lg bg-gray-800 px-6 py-8 shadow-sm dark:bg-gray-800/70">
-        <h1 className="mt-3 text-3xl font-bold tracking-tight text-white">
+      <div className="rounded-lg bg-white px-6 py-8 shadow-sm ring-1 ring-slate-200 dark:bg-gray-800/70 dark:ring-white/10">
+        <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
           {data?.title ?? "Live tracker"}
         </h1>
-        <p className="mt-3 max-w-3xl text-sm text-gray-300">
+        <p className="mt-3 max-w-3xl text-sm text-slate-600 dark:text-gray-300">
           {data?.description ?? "Open inspection issues extracted from reports."}
         </p>
       </div>
 
-      <section className="rounded-2xl bg-[#1f2937] px-6 py-6 shadow-sm ring-1 ring-white/10">
+      <section className="rounded-2xl bg-white px-6 py-6 shadow-sm ring-1 ring-slate-200 dark:bg-[#1f2937] dark:ring-white/10">
         <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)_auto]">
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-white">Site</label>
+            <label className="block text-sm font-medium text-slate-900 dark:text-white">Site</label>
             <select
               value={selectedSite}
               onChange={(event) => setSelectedSite(event.target.value)}
-              className="block w-full appearance-none rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm text-white outline-none transition focus:border-[#6D5EF5] focus:ring-2 focus:ring-[#6D5EF5]/30"
+              className="block w-full appearance-none rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#6D5EF5] focus:ring-2 focus:ring-[#6D5EF5]/30 dark:border-white/10 dark:bg-[#111827] dark:text-white"
             >
               {(data?.controls.sites ?? []).map((site) => (
                 <option key={site} value={site}>
@@ -375,18 +375,18 @@ export default function TrackerPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-white">Search</label>
+            <label className="block text-sm font-medium text-slate-900 dark:text-white">Search</label>
             <div className="relative">
               <MagnifyingGlassIcon
                 aria-hidden="true"
-                className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-gray-400"
+                className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-slate-400 dark:text-gray-400"
               />
               <input
                 type="text"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search issues"
-                className="block w-full rounded-xl border border-white/10 bg-[#111827] py-3 pr-4 pl-11 text-sm text-white outline-none transition placeholder:text-gray-400 focus:border-[#6D5EF5] focus:ring-2 focus:ring-[#6D5EF5]/30"
+                className="block w-full rounded-xl border border-slate-300 bg-white py-3 pr-4 pl-11 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#6D5EF5] focus:ring-2 focus:ring-[#6D5EF5]/30 dark:border-white/10 dark:bg-[#111827] dark:text-white dark:placeholder:text-gray-400"
               />
             </div>
           </div>
@@ -405,31 +405,31 @@ export default function TrackerPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl bg-[#1f2937] px-6 py-6 shadow-sm ring-1 ring-white/10">
+      <section className="rounded-2xl bg-white px-6 py-6 shadow-sm ring-1 ring-slate-200 dark:bg-[#1f2937] dark:ring-white/10">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-semibold tracking-[0.22em] text-gray-400 uppercase">
+            <p className="text-xs font-semibold tracking-[0.22em] text-slate-500 uppercase dark:text-gray-400">
               Inspection Status Tracker
             </p>
-            <h2 className="mt-2 text-2xl font-semibold text-white">
+            <h2 className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">
               {data?.inspectionStatusTracker.siteLabel ?? selectedSite}
             </h2>
-            <p className="mt-2 text-sm text-gray-300">
+            <p className="mt-2 text-sm text-slate-600 dark:text-gray-300">
               {data?.inspectionStatusTracker.overview ??
                 "Overview of inspection progress across all lots"}
             </p>
           </div>
-          <div className="rounded-full bg-white/10 px-4 py-2 text-sm font-medium text-gray-200">
+          <div className="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 dark:bg-white/10 dark:text-gray-200">
             {data?.inspectionStatusTracker.lots.length ?? 0} lots loaded
           </div>
         </div>
 
-        <div className="mt-6 overflow-hidden rounded-xl bg-gray-800/75 ring-1 ring-white/10">
+        <div className="mt-6 overflow-hidden rounded-xl bg-slate-50 ring-1 ring-slate-200 dark:bg-gray-800/75 dark:ring-white/10">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-white/10">
-              <thead className="bg-[#111827]">
-                <tr className="text-left text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
-                  <th className="sticky left-0 bg-[#111827] px-4 py-4">Inspection Type</th>
+            <table className="min-w-full divide-y divide-slate-200 dark:divide-white/10">
+              <thead className="bg-slate-100 dark:bg-[#111827]">
+                <tr className="text-left text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-gray-400">
+                  <th className="sticky left-0 bg-slate-100 px-4 py-4 dark:bg-[#111827]">Inspection Type</th>
                   {(data?.inspectionStatusTracker.lots ?? []).map((lot) => (
                     <th key={lot} className="px-4 py-4 text-center whitespace-nowrap">
                       {lot}
@@ -439,8 +439,8 @@ export default function TrackerPage() {
               </thead>
               <tbody className="divide-y divide-white/10">
                 {data?.inspectionStatusTracker.rows.map((row) => (
-                  <tr key={row.inspectionType} className="text-sm text-gray-200">
-                    <td className="sticky left-0 bg-[#1f2937] px-4 py-4 font-medium text-white">
+                  <tr key={row.inspectionType} className="text-sm text-slate-700 dark:text-gray-200">
+                    <td className="sticky left-0 bg-white px-4 py-4 font-medium text-slate-900 dark:bg-[#1f2937] dark:text-white">
                       {row.inspectionType}
                     </td>
                     {row.cells.map((cell) => (
@@ -476,7 +476,7 @@ export default function TrackerPage() {
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-gray-200">
+        <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-slate-700 dark:text-gray-200">
           {(["passed", "ready", "failed", "not_started"] as InspectionMatrixStatus[]).map(
             (status) => (
               <span key={status} className="inline-flex items-center gap-2">
@@ -491,7 +491,7 @@ export default function TrackerPage() {
       </section>
 
       <section>
-        <h3 className="text-base font-semibold text-white">Progress</h3>
+        <h3 className="text-base font-semibold text-slate-900 dark:text-white">Progress</h3>
         <dl className="mt-5 grid grid-cols-1 divide-gray-200 overflow-hidden rounded-lg bg-white shadow-sm md:grid-cols-3 md:divide-x md:divide-y-0 dark:divide-white/10 dark:bg-gray-800/75 dark:shadow-none dark:inset-ring dark:inset-ring-white/10 xl:grid-cols-4">
           {(data?.inspectionStatusTracker.progress ?? []).map((item) => {
             const currentStatus =
@@ -567,7 +567,7 @@ export default function TrackerPage() {
         <SummaryCard label="Closed (7d)" value={data?.summary.closedLast7Days ?? 0} />
       </section>
 
-      <section className="rounded-2xl bg-[#1f2937] px-6 py-6 shadow-sm ring-1 ring-white/10">
+      <section className="rounded-2xl bg-white px-6 py-6 shadow-sm ring-1 ring-slate-200 dark:bg-[#1f2937] dark:ring-white/10">
         <div className="grid gap-4 md:grid-cols-3">
           <FilterSelect
             label="Status"
@@ -604,12 +604,12 @@ export default function TrackerPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl bg-[#1f2937] px-6 py-6 shadow-sm ring-1 ring-white/10">
+      <section className="rounded-2xl bg-white px-6 py-6 shadow-sm ring-1 ring-slate-200 dark:bg-[#1f2937] dark:ring-white/10">
         <div className="mb-4">
-          <p className="text-xs font-semibold tracking-[0.22em] text-gray-400 uppercase">
+          <p className="text-xs font-semibold tracking-[0.22em] text-slate-500 uppercase dark:text-gray-400">
             Issue Register
           </p>
-          <h2 className="mt-2 text-2xl font-semibold text-white">
+          <h2 className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">
             {data?.issueRegister.siteSelected
               ? `Issue Register (Site Selected: ${selectedSite})`
               : "Issue Register"}
@@ -617,14 +617,14 @@ export default function TrackerPage() {
         </div>
 
         <div className="mb-3 flex items-center justify-between gap-3">
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-slate-600 dark:text-gray-400">
             Select an issue to open its details and actions.
           </p>
           {selectedIssue ? (
             <button
               type="button"
               onClick={() => setSelectedIssueId(selectedIssue.id)}
-              className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-white/20"
+              className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
             >
               <CheckCircleIcon className="size-4" aria-hidden="true" />
               Issue selected
@@ -632,11 +632,11 @@ export default function TrackerPage() {
           ) : null}
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-white/10">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-white/10">
-              <thead className="bg-[#111827]">
-                <tr className="text-left text-xs font-semibold tracking-[0.18em] text-gray-400 uppercase">
+            <table className="min-w-full divide-y divide-slate-200 dark:divide-white/10">
+              <thead className="bg-slate-100 dark:bg-[#111827]">
+                <tr className="text-left text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase dark:text-gray-400">
                   {(data?.issueRegister.columns ?? []).map((column) => (
                     <th key={column} className="px-5 py-4">
                       {column}
@@ -644,7 +644,7 @@ export default function TrackerPage() {
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/10 bg-[#1f2937]">
+              <tbody className="divide-y divide-slate-200 bg-white dark:divide-white/10 dark:bg-[#1f2937]">
                 {loading ? (
                   Array.from({ length: 5 }).map((_, index) => (
                     <tr key={`tracker-skeleton-${index}`}>
@@ -652,7 +652,7 @@ export default function TrackerPage() {
                         length: data?.issueRegister.columns.length ?? 6,
                       }).map((__, cellIndex) => (
                         <td key={cellIndex} className="px-5 py-4">
-                          <div className="h-4 w-full max-w-[180px] animate-pulse rounded bg-white/10" />
+                          <div className="h-4 w-full max-w-[180px] animate-pulse rounded bg-slate-200 dark:bg-white/10" />
                         </td>
                       ))}
                     </tr>
@@ -662,16 +662,16 @@ export default function TrackerPage() {
                     <tr
                       key={issue.id}
                       onClick={() => setSelectedIssueId(issue.id)}
-                      className={`group cursor-pointer text-sm text-gray-200 transition hover:bg-white/5 ${
+                      className={`group cursor-pointer text-sm text-slate-700 transition hover:bg-slate-50 dark:text-gray-200 dark:hover:bg-white/5 ${
                         selectedIssueId === issue.id
-                          ? "bg-white/5 ring-1 ring-inset ring-[#6D5EF5]/40"
+                          ? "bg-indigo-50 ring-1 ring-inset ring-[#6D5EF5]/40 dark:bg-white/5"
                           : ""
                       }`}
                     >
-                      <td className="px-5 py-4 font-medium text-white">
+                      <td className="px-5 py-4 font-medium text-slate-900 dark:text-white">
                         <div className="flex items-center gap-3">
                           <span>{issue.issue}</span>
-                          <span className="inline-flex rounded-full bg-white/10 px-2.5 py-1 text-xs font-semibold text-gray-200 transition group-hover:bg-[#6D5EF5]/20 group-hover:text-white">
+                          <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 transition group-hover:bg-indigo-100 group-hover:text-indigo-800 dark:bg-white/10 dark:text-gray-200 dark:group-hover:bg-[#6D5EF5]/20 dark:group-hover:text-white">
                             View details
                           </span>
                         </div>
@@ -695,7 +695,7 @@ export default function TrackerPage() {
                   <tr>
                     <td
                       colSpan={data?.issueRegister.columns.length ?? 6}
-                      className="px-5 py-8 text-center text-sm text-gray-400"
+                      className="px-5 py-8 text-center text-sm text-slate-500 dark:text-gray-400"
                     >
                       No issues found for the selected filters.
                     </td>
@@ -721,25 +721,25 @@ export default function TrackerPage() {
           <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-6">
             <DialogPanel
               transition
-              className="relative w-full max-w-4xl transform overflow-hidden rounded-2xl bg-[#111827] text-left shadow-xl ring-1 ring-white/10 transition-all data-closed:translate-y-4 data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in data-closed:sm:translate-y-0 data-closed:sm:scale-95"
+              className="relative w-full max-w-4xl transform overflow-hidden rounded-2xl bg-white text-left shadow-xl ring-1 ring-slate-200 dark:bg-[#111827] dark:ring-white/10 transition-all data-closed:translate-y-4 data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in data-closed:sm:translate-y-0 data-closed:sm:scale-95"
             >
               {selectedIssue ? (
                 <div className="p-6 sm:p-8">
-                  <div className="flex flex-col gap-4 border-b border-white/10 pb-5 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 dark:border-white/10 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex items-start gap-4">
-                      <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#6D5EF5]/15 text-[#b8b0ff]">
+                      <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#6D5EF5]/15 text-[#6D5EF5] dark:text-[#b8b0ff]">
                         <ClipboardDocumentCheckIcon
                           aria-hidden="true"
                           className="size-6"
                         />
                       </div>
                       <div>
-                        <p className="text-xs font-semibold tracking-[0.22em] text-gray-400 uppercase">
+                        <p className="text-xs font-semibold tracking-[0.22em] text-slate-500 uppercase dark:text-gray-400">
                           Selected Issue
                         </p>
                         <DialogTitle
                           as="h3"
-                          className="mt-2 text-2xl font-semibold text-white"
+                          className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white"
                         >
                           {selectedIssue.issue}
                         </DialogTitle>
@@ -748,7 +748,7 @@ export default function TrackerPage() {
                     <button
                       type="button"
                       onClick={() => setSelectedIssueId(null)}
-                      className="inline-flex size-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+                      className="inline-flex size-10 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-slate-200 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
                     >
                       <span className="sr-only">Close modal</span>
                       <XMarkIcon className="size-5" aria-hidden="true" />
@@ -775,11 +775,11 @@ export default function TrackerPage() {
                         />
                       </dl>
 
-                      <div className="rounded-2xl border border-white/10 bg-[#1f2937] p-4">
-                        <p className="text-sm font-semibold text-white">
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-[#1f2937]">
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white">
                           Inspection note
                         </p>
-                        <p className="mt-2 text-sm leading-6 text-gray-300">
+                        <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-gray-300">
                           {selectedIssue.inspectionNote}
                         </p>
                       </div>
@@ -839,21 +839,21 @@ export default function TrackerPage() {
           <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-6">
             <DialogPanel
               transition
-              className="relative w-full max-w-2xl transform overflow-hidden rounded-2xl bg-[#111827] text-left shadow-xl ring-1 ring-white/10 transition-all data-closed:translate-y-4 data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in data-closed:sm:translate-y-0 data-closed:sm:scale-95"
+              className="relative w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white text-left shadow-xl ring-1 ring-slate-200 dark:bg-[#111827] dark:ring-white/10 transition-all data-closed:translate-y-4 data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in data-closed:sm:translate-y-0 data-closed:sm:scale-95"
             >
               {selectedMatrixCell ? (
                 <div className="p-6 sm:p-8">
-                  <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-5">
+                  <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-5 dark:border-white/10">
                     <div className="flex items-start gap-4">
                       <div
                         className={`flex size-12 shrink-0 items-center justify-center rounded-full ${
                           selectedMatrixCell.status === "failed"
-                            ? "bg-red-500/15 text-red-300"
+                            ? "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300"
                             : selectedMatrixCell.status === "ready"
-                              ? "bg-yellow-500/15 text-yellow-200"
+                              ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/15 dark:text-yellow-200"
                               : selectedMatrixCell.status === "passed"
-                                ? "bg-green-500/15 text-green-200"
-                                : "bg-gray-500/15 text-gray-200"
+                                ? "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-200"
+                                : "bg-slate-100 text-slate-700 dark:bg-gray-500/15 dark:text-gray-200"
                         }`}
                       >
                         <span
@@ -861,12 +861,12 @@ export default function TrackerPage() {
                         />
                       </div>
                       <div>
-                        <p className="text-xs font-semibold tracking-[0.22em] text-gray-400 uppercase">
+                        <p className="text-xs font-semibold tracking-[0.22em] text-slate-500 uppercase dark:text-gray-400">
                           Inspection Status Tracker
                         </p>
                         <DialogTitle
                           as="h3"
-                          className="mt-2 text-2xl font-semibold text-white"
+                          className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white"
                         >
                           {matrixStatusMeta[selectedMatrixCell.status].modalTitle}
                         </DialogTitle>
@@ -875,7 +875,7 @@ export default function TrackerPage() {
                     <button
                       type="button"
                       onClick={() => setSelectedMatrixCell(null)}
-                      className="inline-flex size-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+                      className="inline-flex size-10 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-slate-200 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
                     >
                       <span className="sr-only">Close modal</span>
                       <XMarkIcon className="size-5" aria-hidden="true" />
@@ -883,7 +883,7 @@ export default function TrackerPage() {
                   </div>
 
                   <div className="mt-6 space-y-5">
-                    <p className="text-sm leading-6 text-gray-300">
+                    <p className="text-sm leading-6 text-slate-600 dark:text-gray-300">
                       {matrixStatusMeta[selectedMatrixCell.status].modalDescription}
                     </p>
                     <dl className="grid gap-4 sm:grid-cols-3">
@@ -897,9 +897,9 @@ export default function TrackerPage() {
                         value={selectedMatrixCell.inspectionType}
                       />
                     </dl>
-                    <div className="rounded-2xl border border-white/10 bg-[#1f2937] p-4">
-                      <p className="text-sm font-semibold text-white">Current status</p>
-                      <p className="mt-2 text-sm text-gray-300">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-[#1f2937]">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white">Current status</p>
+                      <p className="mt-2 text-sm text-slate-600 dark:text-gray-300">
                         {matrixStatusMeta[selectedMatrixCell.status].label}
                       </p>
                     </div>
@@ -916,9 +916,9 @@ export default function TrackerPage() {
 
 function SummaryCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-2xl bg-[#1f2937] px-5 py-5 shadow-sm ring-1 ring-white/10">
-      <p className="text-sm font-medium text-gray-300">{label}</p>
-      <p className="mt-3 text-4xl font-semibold text-white">{value}</p>
+    <div className="rounded-2xl bg-white px-5 py-5 shadow-sm ring-1 ring-slate-200 dark:bg-[#1f2937] dark:ring-white/10">
+      <p className="text-sm font-medium text-slate-600 dark:text-gray-300">{label}</p>
+      <p className="mt-3 text-4xl font-semibold text-slate-900 dark:text-white">{value}</p>
     </div>
   );
 }
@@ -938,11 +938,11 @@ function FilterSelect({
 }) {
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-white">{label}</label>
+      <label className="block text-sm font-medium text-slate-900 dark:text-white">{label}</label>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="block w-full appearance-none rounded-xl border border-white/10 bg-[#111827] px-4 py-3 text-sm text-white outline-none transition focus:border-[#6D5EF5] focus:ring-2 focus:ring-[#6D5EF5]/30"
+        className="block w-full appearance-none rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#6D5EF5] focus:ring-2 focus:ring-[#6D5EF5]/30 dark:border-white/10 dark:bg-[#111827] dark:text-white"
       >
         {options.map((option) => (
           <option key={option} value={option}>
@@ -957,10 +957,10 @@ function FilterSelect({
 function DetailItem({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-xs font-semibold tracking-[0.18em] text-gray-400 uppercase">
+      <dt className="text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase dark:text-gray-400">
         {label}
       </dt>
-      <dd className="mt-2 text-sm text-white">{value}</dd>
+      <dd className="mt-2 text-sm text-slate-900 dark:text-white">{value}</dd>
     </div>
   );
 }

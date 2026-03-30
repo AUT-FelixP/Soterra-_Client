@@ -67,7 +67,7 @@ export default function ProjectPage({
         action={
           <Link
             href="/app/company"
-            className="text-sm font-semibold text-indigo-200 transition hover:text-white"
+            className="text-sm font-semibold text-indigo-700 transition hover:text-indigo-900 dark:text-indigo-200 dark:hover:text-white"
           >
             Back to company
           </Link>
@@ -132,7 +132,7 @@ export default function ProjectPage({
                 <p className="text-sm font-medium text-white">{item.label}</p>
                 <div className="flex items-center gap-3 text-sm">
                   <span className={comparisonTone(item.tone)}>{item.projectValue}</span>
-                  <span className="text-slate-400">vs {item.companyValue} avg</span>
+                  <span className="text-slate-500 dark:text-slate-400">vs {item.companyValue} avg</span>
                   <DashboardBadge label={item.deltaLabel} tone={item.tone === "critical" ? "critical" : "neutral"} />
                 </div>
               </div>
@@ -147,7 +147,11 @@ export default function ProjectPage({
             {
               key: "issue",
               header: "Issue",
-              render: (row) => <span className="font-medium text-white">{row.issue}</span>,
+              render: (row) => (
+                <span className="font-medium text-slate-900 dark:text-white">
+                  {row.issue}
+                </span>
+              ),
             },
             { key: "type", header: "Type", render: (row) => row.type },
             { key: "date", header: "Date", render: (row) => row.date },
@@ -170,8 +174,8 @@ export default function ProjectPage({
 }
 
 function comparisonTone(tone?: "critical" | "warning" | "success") {
-  if (tone === "critical") return "font-semibold text-rose-300";
-  if (tone === "warning") return "font-semibold text-amber-300";
-  if (tone === "success") return "font-semibold text-emerald-300";
-  return "font-semibold text-white";
+  if (tone === "critical") return "font-semibold text-rose-600 dark:text-rose-300";
+  if (tone === "warning") return "font-semibold text-amber-600 dark:text-amber-300";
+  if (tone === "success") return "font-semibold text-emerald-600 dark:text-emerald-300";
+  return "font-semibold text-slate-900 dark:text-white";
 }
