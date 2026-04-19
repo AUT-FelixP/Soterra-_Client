@@ -80,17 +80,17 @@ export default function FinalCta() {
 
   return (
     <section className="mx-auto w-full max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
-      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-white/10 dark:bg-gray-900/60 dark:shadow-none">
+      <div className="rounded-2xl border border-white/10 bg-white/5">
         <div className="px-6 py-10 sm:px-10">
           <div className="grid gap-10 lg:grid-cols-[1.1fr_1fr]">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-300">
+              <p className="text-sm/6 font-semibold uppercase tracking-[0.2em] text-indigo-300">
                 Request a demo
               </p>
-              <h2 className="mt-4 text-3xl font-semibold text-gray-900 dark:text-white">
+              <h2 className="mt-4 text-3xl font-semibold text-white">
                 Turn inspection data into confident decisions.
               </h2>
-              <p className="mt-4 text-base text-gray-600 dark:text-gray-300">
+              <p className="mt-4 text-base/7 text-slate-300">
                 See how Soterra delivers portfolio-wide risk visibility, faster
                 corrective action, and clear reporting for every stakeholder.
               </p>
@@ -100,7 +100,7 @@ export default function FinalCta() {
               <div>
                 <label
                   htmlFor="lead-name"
-                  className="block text-sm font-medium text-gray-900 dark:text-white"
+                  className="block text-sm/6 font-medium text-white"
                 >
                   Name
                 </label>
@@ -111,7 +111,7 @@ export default function FinalCta() {
                     type="text"
                     autoComplete="name"
                     required
-                    className="block w-full rounded-md bg-white px-3 py-2 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500"
+                    className="block w-full rounded-md bg-white/5 px-3 py-2.5 text-sm/6 text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-slate-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500"
                     placeholder="Alex Morgan"
                   />
                 </div>
@@ -120,7 +120,7 @@ export default function FinalCta() {
               <div>
                 <label
                   htmlFor="lead-email"
-                  className="block text-sm font-medium text-gray-900 dark:text-white"
+                  className="block text-sm/6 font-medium text-white"
                 >
                   Email
                 </label>
@@ -131,7 +131,7 @@ export default function FinalCta() {
                     type="email"
                     autoComplete="email"
                     required
-                    className="block w-full rounded-md bg-white px-3 py-2 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500"
+                    className="block w-full rounded-md bg-white/5 px-3 py-2.5 text-sm/6 text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-slate-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500"
                     placeholder="alex@company.com"
                   />
                 </div>
@@ -140,7 +140,7 @@ export default function FinalCta() {
               <div>
                 <label
                   htmlFor="lead-organisation"
-                  className="block text-sm font-medium text-gray-900 dark:text-white"
+                  className="block text-sm/6 font-medium text-white"
                 >
                   Organisation
                 </label>
@@ -151,7 +151,7 @@ export default function FinalCta() {
                     type="text"
                     autoComplete="organization"
                     required
-                    className="block w-full rounded-md bg-white px-3 py-2 text-sm text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500"
+                    className="block w-full rounded-md bg-white/5 px-3 py-2.5 text-sm/6 text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-slate-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500"
                     placeholder="Soterra Construction Group"
                   />
                 </div>
@@ -160,7 +160,7 @@ export default function FinalCta() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="inline-flex w-full items-center justify-center rounded-full bg-[#6D5EF5] px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-[#5f51e6] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6D5EF5] disabled:cursor-not-allowed disabled:opacity-70 dark:bg-[#6D5EF5] dark:shadow-none dark:hover:bg-[#7a6bff] dark:focus-visible:outline-[#6D5EF5]"
+                className="inline-flex w-full items-center justify-center rounded-full bg-[#6D5EF5] px-5 py-2.5 text-sm/6 font-semibold text-white transition-colors hover:bg-[#7C70FF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6D5EF5] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isSubmitting ? "Submitting..." : "Request a Demo"}
               </button>
@@ -172,11 +172,11 @@ export default function FinalCta() {
       {toast ? (
         <div className="fixed bottom-6 right-6 z-50">
           <div
-            className={`rounded-md px-4 py-3 text-sm shadow-lg ${toastStyles}`}
+            className={`rounded-md px-4 py-3 text-sm/6 shadow-lg ${toastStyles}`}
             role="status"
           >
             <div className="font-semibold">{toast.title}</div>
-            <div className="mt-1 text-sm opacity-90">{toast.message}</div>
+            <div className="mt-1 text-sm/6 opacity-90">{toast.message}</div>
           </div>
         </div>
       ) : null}

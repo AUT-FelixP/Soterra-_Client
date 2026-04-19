@@ -34,6 +34,10 @@ body {
   height: 100%;
 }
 
+html {
+  color-scheme: dark;
+}
+
 .brand-glow {
   position: relative;
   display: inline-block;
@@ -61,6 +65,13 @@ body {
   pointer-events: none;
   z-index: -1;
   will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-glow,
+  .brand-glow::before {
+    animation: none;
+  }
 }
 
 @keyframes brandGlow {
