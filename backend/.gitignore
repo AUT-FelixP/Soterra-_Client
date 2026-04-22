@@ -1,8 +1,0 @@
-.venv/
-artifacts/
-__pycache__/
-*.pyc
-*.egg-info/
-.env
-.env.*
-!.env.example

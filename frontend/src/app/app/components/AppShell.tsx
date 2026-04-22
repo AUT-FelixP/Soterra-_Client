@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -27,6 +27,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { classNames } from "@/lib/classNames";
 import { AUTH_STORAGE_KEY } from "@/lib/auth";
+import type { AppSession } from "@/lib/auth";
 
 const navigation = [
   { id: "overview", name: "Overview", href: "/app", icon: HomeIcon },
@@ -59,6 +60,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [session, setSession] = useState<AppSession | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/auth/session", { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload) => {
+        if (active) setSession(payload?.user ?? null);
+      })
+      .catch(() => null);
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function handleSignOut() {
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
@@ -85,6 +100,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       { name: label, href: parentHref, current: true },
     ];
   }, [pathname]);
+
+  const visibleNavigation = useMemo(
+    () => navigation.filter((item) => item.id !== "settings" || session?.role === "admin"),
+    [session?.role]
+  );
+  const initials = (session?.name ?? "Soterra Client")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "SC";
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-gray-950 dark:text-white">
@@ -129,7 +155,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </div>
               <nav className="relative flex flex-1 flex-col">
                 <ul role="list" className="-mx-2 space-y-1">
-                  {navigation.map((item) => {
+                  {visibleNavigation.map((item) => {
                     const isActive =
                       pathname === item.href ||
                       (item.href !== "/app" && pathname.startsWith(item.href));
@@ -179,7 +205,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <nav className="relative flex flex-1 flex-col">
             <ul role="list" className="-mx-2 space-y-1">
-              {navigation.map((item) => {
+              {visibleNavigation.map((item) => {
                 const isActive =
                   pathname === item.href ||
                   (item.href !== "/app" && pathname.startsWith(item.href));
@@ -269,10 +295,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <MenuButton className="flex items-center gap-3 rounded-full text-sm/6 font-semibold text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:text-white dark:focus-visible:outline-indigo-500">
               <span className="sr-only">Open user menu</span>
               <span className="inline-flex size-8 items-center justify-center rounded-full bg-indigo-600 text-sm font-semibold text-white">
-                SC
+                {initials}
               </span>
               <span className="hidden text-sm/6 font-semibold text-gray-900 sm:block dark:text-white">
-                Sam Carter
+                {session?.name ?? "Soterra Client"}
               </span>
             </MenuButton>
             <MenuItems

@@ -176,8 +176,8 @@ export function DashboardBarChart(props: {
       <div className="rounded-xl border border-indigo-100/80 bg-white/90 px-3 py-3 dark:border-white/10 dark:bg-slate-800/90">
         <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
           <div className="flex h-40 flex-col justify-between pb-6 text-[11px] font-medium text-slate-400 dark:text-slate-500">
-            {scaleLabels.map((label) => (
-              <span key={label}>{label}</span>
+            {scaleLabels.map((label, index) => (
+              <span key={`${label}-${index}`}>{label}</span>
             ))}
           </div>
 

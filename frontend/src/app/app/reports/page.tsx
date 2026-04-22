@@ -148,6 +148,8 @@ export default function ReportsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [uploadMessage, setUploadMessage] = useState("");
   const [uploadError, setUploadError] = useState("");
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [selectedReportIds, setSelectedReportIds] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [selectedFileName, setSelectedFileName] = useState<string>("");
   const [filters, setFilters] = useState({
@@ -168,7 +170,11 @@ export default function ReportsPage() {
       }
       const data = await response.json();
       const items = Array.isArray(data) ? data : data?.items ?? [];
-      setReports(items.map((item: ApiReport, index: number) => normalizeReport(item, index)));
+      const normalized = items.map((item: ApiReport, index: number) => normalizeReport(item, index));
+      setReports(normalized);
+      setSelectedReportIds((current) =>
+        current.filter((id) => normalized.some((report: Report) => report.id === id))
+      );
       setUploadError("");
     } catch (error) {
       setReports([]);
@@ -234,6 +240,75 @@ export default function ReportsPage() {
       return true;
     });
   }, [reports, filters]);
+
+  const selectedCount = selectedReportIds.length;
+  const filteredReportIds = useMemo(
+    () => filteredReports.map((report) => report.id),
+    [filteredReports]
+  );
+  const allFilteredSelected =
+    filteredReportIds.length > 0 &&
+    filteredReportIds.every((id) => selectedReportIds.includes(id));
+
+  function toggleReportSelection(reportId: string) {
+    setSelectedReportIds((current) =>
+      current.includes(reportId)
+        ? current.filter((id) => id !== reportId)
+        : [...current, reportId]
+    );
+  }
+
+  function toggleFilteredSelection() {
+    if (allFilteredSelected) {
+      setSelectedReportIds((current) =>
+        current.filter((id) => !filteredReportIds.includes(id))
+      );
+      return;
+    }
+
+    setSelectedReportIds((current) =>
+      Array.from(new Set([...current, ...filteredReportIds]))
+    );
+  }
+
+  async function deleteSelectedReports() {
+    if (selectedReportIds.length === 0 || bulkDeleting) return;
+    const confirmed = window.confirm(
+      `Delete ${selectedReportIds.length} selected report${selectedReportIds.length === 1 ? "" : "s"} and their extracted issues?`
+    );
+    if (!confirmed) return;
+
+    setBulkDeleting(true);
+    setUploadError("");
+    setUploadMessage("");
+    try {
+      const response = await fetch("/api/reports", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: selectedReportIds }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.detail ?? payload?.message ?? "Unable to delete selected reports.");
+      }
+
+      const deletedIds = Array.isArray(payload?.deleted) ? payload.deleted : [];
+      setReports((current) => current.filter((report) => !deletedIds.includes(report.id)));
+      setSelectedReportIds((current) => current.filter((id) => !deletedIds.includes(id)));
+      setUploadMessage(
+        `${payload?.deletedCount ?? deletedIds.length} report${(payload?.deletedCount ?? deletedIds.length) === 1 ? "" : "s"} deleted.`
+      );
+      if (payload?.missingCount > 0) {
+        setUploadError(`${payload.missingCount} selected report${payload.missingCount === 1 ? "" : "s"} could not be found.`);
+      }
+    } catch (error) {
+      setUploadError(
+        error instanceof Error ? error.message : "Unable to delete selected reports."
+      );
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -401,10 +476,46 @@ export default function ReportsPage() {
         </div>
       </div>
 
+      {selectedCount > 0 ? (
+        <div className="flex flex-col gap-3 rounded-xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm/6 text-rose-900 sm:flex-row sm:items-center sm:justify-between dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-100">
+          <span>
+            {selectedCount} report{selectedCount === 1 ? "" : "s"} selected
+          </span>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedReportIds([])}
+              disabled={bulkDeleting}
+              className="rounded-full border border-rose-300 bg-white px-3 py-1.5 text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-70 dark:border-rose-400/30 dark:bg-white/5 dark:text-rose-100 dark:hover:bg-rose-500/10"
+            >
+              Clear selection
+            </button>
+            <button
+              type="button"
+              onClick={deleteSelectedReports}
+              disabled={bulkDeleting}
+              className="rounded-full bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-rose-500 disabled:opacity-70"
+            >
+              {bulkDeleting ? "Deleting..." : "Delete selected"}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-slate-900/70 dark:shadow-none">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-white/10">
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:bg-slate-950/80 dark:text-slate-400">
             <tr>
+              <th className="w-12 px-6 py-3">
+                <input
+                  type="checkbox"
+                  aria-label="Select all visible reports"
+                  checked={allFilteredSelected}
+                  disabled={filteredReportIds.length === 0}
+                  onChange={toggleFilteredSelection}
+                  className="size-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 disabled:opacity-40 dark:border-white/20 dark:bg-slate-950"
+                />
+              </th>
               <th className="px-6 py-3">Report</th>
               <th className="px-6 py-3">Site</th>
               <th className="px-6 py-3">Issues found</th>
@@ -417,6 +528,9 @@ export default function ReportsPage() {
             {loading
               ? Array.from({ length: 5 }).map((_, index) => (
                   <tr key={`report-loading-${index}`}>
+                    <td className="px-6 py-4">
+                      <div className="size-4 animate-pulse rounded bg-gray-200 dark:bg-white/10" />
+                    </td>
                     <td className="px-6 py-4">
                       <div className="h-4 w-40 animate-pulse rounded bg-gray-200 dark:bg-white/10" />
                     </td>
@@ -439,6 +553,15 @@ export default function ReportsPage() {
                 ))
               : filteredReports.map((report) => (
                   <tr key={report.id} className="text-sm/6 text-slate-700 transition-colors even:bg-slate-50 hover:bg-slate-50 dark:text-slate-200 dark:even:bg-slate-950/25 dark:hover:bg-white/5">
+                    <td className="px-6 py-4">
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${report.project}`}
+                        checked={selectedReportIds.includes(report.id)}
+                        onChange={() => toggleReportSelection(report.id)}
+                        className="size-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 dark:border-white/20 dark:bg-slate-950"
+                      />
+                    </td>
                     <td className="px-6 py-4 text-sm font-medium text-slate-900 dark:text-white">
                       <div>
                         <p>{report.project}</p>

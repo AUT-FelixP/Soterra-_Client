@@ -149,7 +149,7 @@ export default async function ReportDetailPage({
               >
                 Back to reports
               </Link>
-              <ReportPrintActions />
+              <ReportPrintActions reportId={report.id} />
             </div>
           </div>
 

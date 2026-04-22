@@ -1,4 +1,9 @@
-import { AUTH_COOKIE, AUTH_COOKIE_VALUE } from "@/lib/auth";
+import { AUTH_COOKIE, AUTH_COOKIE_VALUE, SESSION_COOKIE, type AppSession } from "@/lib/auth";
+import { encodeSession } from "@/lib/backendProxy";
+
+function backendBaseUrl() {
+  return process.env.BACKEND_BASE_URL ?? "http://127.0.0.1:8001";
+}
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
@@ -18,15 +23,45 @@ export async function POST(request: Request) {
     return Response.json({ message: "Invalid credentials." }, { status: 401 });
   }
 
+  const backendResponse = await fetch(new URL("/auth/login", backendBaseUrl()), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", accept: "application/json" },
+    body: JSON.stringify({ email: identity, password }),
+    cache: "no-store",
+  });
+
+  const payload = await backendResponse.json().catch(() => null);
+  if (!backendResponse.ok) {
+    return Response.json(
+      { message: payload?.detail ?? payload?.message ?? "Invalid credentials." },
+      { status: backendResponse.status }
+    );
+  }
+
+  const user = payload?.user;
+  const session: AppSession = {
+    userId: user.id,
+    tenantId: user.tenant_id,
+    tenantName: user.tenant_name,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+  };
+
   const headers = new Headers();
   headers.append(
     "Set-Cookie",
     `${AUTH_COOKIE}=${AUTH_COOKIE_VALUE}; Path=/; SameSite=Lax`
   );
+  headers.append(
+    "Set-Cookie",
+    `${SESSION_COOKIE}=${encodeSession(session)}; Path=/; SameSite=Lax; HttpOnly`
+  );
 
   return Response.json(
     {
       message: "Logged in.",
+      user: session,
     },
     { status: 200, headers }
   );

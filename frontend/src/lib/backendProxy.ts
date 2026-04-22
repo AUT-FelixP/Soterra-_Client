@@ -1,4 +1,5 @@
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { SESSION_COOKIE, type AppSession } from "@/lib/auth";
 
 function backendBaseUrl() {
   return process.env.BACKEND_BASE_URL ?? "http://127.0.0.1:8001";
@@ -19,6 +20,13 @@ export async function proxyBackendRequest(
   }
   if (contentType) {
     outgoingHeaders.set("content-type", contentType);
+  }
+
+  const session = await currentSession();
+  if (session) {
+    outgoingHeaders.set("X-Soterra-Tenant-Id", session.tenantId);
+    outgoingHeaders.set("X-Soterra-User-Id", session.userId);
+    outgoingHeaders.set("X-Soterra-User-Role", session.role);
   }
 
   const method = request.method.toUpperCase();
@@ -49,9 +57,16 @@ export async function proxyBackendRequest(
 
 export async function fetchBackendJson<T>(backendPath: string): Promise<T> {
   const target = new URL(backendPath, backendBaseUrl());
+  const session = await currentSession();
+  const requestHeaders = new Headers({ accept: "application/json" });
+  if (session) {
+    requestHeaders.set("X-Soterra-Tenant-Id", session.tenantId);
+    requestHeaders.set("X-Soterra-User-Id", session.userId);
+    requestHeaders.set("X-Soterra-User-Role", session.role);
+  }
   const response = await fetch(target, {
     cache: "no-store",
-    headers: { accept: "application/json" },
+    headers: requestHeaders,
   });
 
   if (!response.ok) {
@@ -61,10 +76,29 @@ export async function fetchBackendJson<T>(backendPath: string): Promise<T> {
   return (await response.json()) as T;
 }
 
+export function encodeSession(session: AppSession) {
+  return Buffer.from(JSON.stringify(session), "utf8").toString("base64url");
+}
+
+export function decodeSession(value: string | undefined): AppSession | null {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as AppSession;
+    if (!parsed.userId || !parsed.tenantId || !parsed.role) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export async function currentSession() {
+  const cookieStore = await cookies();
+  return decodeSession(cookieStore.get(SESSION_COOKIE)?.value);
+}
+
 export async function currentOrigin() {
   const headerStore = await headers();
   const host = headerStore.get("host");
   const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
   return host ? `${protocol}://${host}` : null;
 }
-
