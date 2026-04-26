@@ -1,4 +1,4 @@
-import { currentSession } from "@/lib/backendProxy";
+import { currentSession, publicSession } from "@/lib/backendProxy";
 
 export async function GET() {
   const session = await currentSession();
@@ -6,5 +6,5 @@ export async function GET() {
     return Response.json({ user: null }, { status: 401 });
   }
 
-  return Response.json({ user: session });
+  return Response.json({ user: publicSession(session) });
 }

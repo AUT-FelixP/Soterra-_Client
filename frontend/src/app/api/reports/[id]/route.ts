@@ -5,7 +5,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  return proxyBackendRequest(request, `/reports/${id}`);
+  return proxyBackendRequest(request, `/reports/${encodeURIComponent(id)}`);
 }
 
 export async function DELETE(
@@ -13,5 +13,5 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  return proxyBackendRequest(request, `/reports/${id}`);
+  return proxyBackendRequest(request, `/reports/${encodeURIComponent(id)}`);
 }

@@ -3,14 +3,14 @@
 import { MoonIcon, SunIcon } from "@heroicons/react/24/outline";
 import type { ReactNode } from "react";
 import { FormEvent, useEffect, useState } from "react";
-import type { AppSession } from "@/lib/auth";
+import type { PublicAppSession } from "@/lib/auth";
 
 const THEME_STORAGE_KEY = "soterra-theme";
 
 type ThemeMode = "dark" | "light";
 
 export default function SettingsPage() {
-  const [session, setSession] = useState<AppSession | null>(null);
+  const [session, setSession] = useState<PublicAppSession | null>(null);
   const [members, setMembers] = useState<Array<{ id: string; name: string; email: string; role: string }>>([]);
   const [memberError, setMemberError] = useState<string | null>(null);
   const [theme, setTheme] = useState<ThemeMode>(() => {
@@ -44,13 +44,19 @@ export default function SettingsPage() {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     setMemberError(null);
+    const password = String(form.get("password") ?? "");
+    if (password.length < 12) {
+      setMemberError("Temporary password must be at least 12 characters.");
+      return;
+    }
+
     const response = await fetch("/api/tenant/members", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: String(form.get("name") ?? "").trim(),
         email: String(form.get("email") ?? "").trim(),
-        password: String(form.get("password") ?? ""),
+        password,
       }),
     });
     const payload = await response.json().catch(() => null);
@@ -138,7 +144,7 @@ export default function SettingsPage() {
         <form onSubmit={inviteMember} className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]">
           <input name="name" required placeholder="Name" className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-white/10 dark:bg-slate-950 dark:text-white" />
           <input name="email" required type="email" placeholder="Email" className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-white/10 dark:bg-slate-950 dark:text-white" />
-          <input name="password" required type="password" placeholder="Temporary password" className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-white/10 dark:bg-slate-950 dark:text-white" />
+          <input name="password" required minLength={12} type="password" placeholder="Temporary password" className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-white/10 dark:bg-slate-950 dark:text-white" />
           <button type="submit" className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-400">
             Invite
           </button>

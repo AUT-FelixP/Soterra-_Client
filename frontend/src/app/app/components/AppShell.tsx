@@ -27,7 +27,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { classNames } from "@/lib/classNames";
 import { AUTH_STORAGE_KEY } from "@/lib/auth";
-import type { AppSession } from "@/lib/auth";
+import type { PublicAppSession } from "@/lib/auth";
 
 const navigation = [
   { id: "overview", name: "Overview", href: "/app", icon: HomeIcon },
@@ -60,7 +60,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [session, setSession] = useState<AppSession | null>(null);
+  const [session, setSession] = useState<PublicAppSession | null>(null);
 
   useEffect(() => {
     let active = true;

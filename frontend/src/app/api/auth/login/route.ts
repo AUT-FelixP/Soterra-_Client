@@ -1,5 +1,5 @@
 import { AUTH_COOKIE, AUTH_COOKIE_VALUE, SESSION_COOKIE, type AppSession } from "@/lib/auth";
-import { encodeSession } from "@/lib/backendProxy";
+import { encodeSession, publicSession } from "@/lib/backendProxy";
 
 function backendBaseUrl() {
   return process.env.BACKEND_BASE_URL ?? "http://127.0.0.1:8001";
@@ -39,6 +39,11 @@ export async function POST(request: Request) {
   }
 
   const user = payload?.user;
+  const accessToken = payload?.access_token;
+  if (!user?.id || !user?.tenant_id || !accessToken) {
+    return Response.json({ message: "Invalid session returned by backend." }, { status: 502 });
+  }
+
   const session: AppSession = {
     userId: user.id,
     tenantId: user.tenant_id,
@@ -46,6 +51,8 @@ export async function POST(request: Request) {
     name: user.name,
     email: user.email,
     role: user.role,
+    accessToken,
+    expiresAt: payload?.expires_at,
   };
 
   const headers = new Headers();
@@ -61,7 +68,7 @@ export async function POST(request: Request) {
   return Response.json(
     {
       message: "Logged in.",
-      user: session,
+      user: publicSession(session),
     },
     { status: 200, headers }
   );

@@ -20,6 +20,11 @@ export default function SignUpPage() {
     const email = String(form.get("email") ?? "").trim();
     const password = String(form.get("password") ?? "");
 
+    if (password.length < 12) {
+      setError("Password must be at least 12 characters.");
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     try {
@@ -45,8 +50,10 @@ export default function SignUpPage() {
   return (
     <div className="flex min-h-full flex-col justify-center px-6 py-12 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-sm">
-        <div className="brand-glow mx-auto text-center text-2xl font-semibold text-gray-900 dark:text-white">
-          Soterra
+        <div className="flex justify-center">
+          <span className="brand-glow text-center text-2xl font-semibold text-gray-900 dark:text-white">
+            Soterra
+          </span>
         </div>
         <h2 className="mt-10 text-center text-2xl/9 font-bold tracking-tight text-gray-900 dark:text-white">
           Create your account
@@ -124,6 +131,7 @@ export default function SignUpPage() {
                 name="password"
                 type="password"
                 required
+                minLength={12}
                 autoComplete="new-password"
                 className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500"
               />

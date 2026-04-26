@@ -24,6 +24,7 @@ export async function proxyBackendRequest(
 
   const session = await currentSession();
   if (session) {
+    outgoingHeaders.set("Authorization", `Bearer ${session.accessToken}`);
     outgoingHeaders.set("X-Soterra-Tenant-Id", session.tenantId);
     outgoingHeaders.set("X-Soterra-User-Id", session.userId);
     outgoingHeaders.set("X-Soterra-User-Role", session.role);
@@ -60,6 +61,7 @@ export async function fetchBackendJson<T>(backendPath: string): Promise<T> {
   const session = await currentSession();
   const requestHeaders = new Headers({ accept: "application/json" });
   if (session) {
+    requestHeaders.set("Authorization", `Bearer ${session.accessToken}`);
     requestHeaders.set("X-Soterra-Tenant-Id", session.tenantId);
     requestHeaders.set("X-Soterra-User-Id", session.userId);
     requestHeaders.set("X-Soterra-User-Role", session.role);
@@ -84,11 +86,24 @@ export function decodeSession(value: string | undefined): AppSession | null {
   if (!value) return null;
   try {
     const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as AppSession;
-    if (!parsed.userId || !parsed.tenantId || !parsed.role) return null;
+    if (!parsed.userId || !parsed.tenantId || !parsed.role || !parsed.accessToken) return null;
+    if (parsed.expiresAt && Date.parse(parsed.expiresAt) <= Date.now()) return null;
     return parsed;
   } catch {
     return null;
   }
+}
+
+export function publicSession(session: AppSession) {
+  return {
+    userId: session.userId,
+    tenantId: session.tenantId,
+    tenantName: session.tenantName,
+    name: session.name,
+    email: session.email,
+    role: session.role,
+    expiresAt: session.expiresAt,
+  };
 }
 
 export async function currentSession() {

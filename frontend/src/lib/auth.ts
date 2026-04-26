@@ -12,4 +12,8 @@ export type AppSession = {
   name: string;
   email: string;
   role: UserRole;
+  accessToken: string;
+  expiresAt?: string;
 };
+
+export type PublicAppSession = Omit<AppSession, "accessToken">;

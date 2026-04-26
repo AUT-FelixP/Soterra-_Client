@@ -5,7 +5,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  return proxyBackendRequest(request, `/issues/${id}`);
+  return proxyBackendRequest(request, `/issues/${encodeURIComponent(id)}`);
 }
 
 export async function PATCH(
@@ -13,5 +13,5 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  return proxyBackendRequest(request, `/issues/${id}`);
+  return proxyBackendRequest(request, `/issues/${encodeURIComponent(id)}`);
 }
