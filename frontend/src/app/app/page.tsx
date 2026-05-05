@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { DashboardOverviewResponse } from "@/lib/dashboardAppData";
+import { getExtractionFileState, type ExtractionFileState } from "@/lib/extractionFiles";
 import {
   DashboardBadge,
   DashboardBarChart,
@@ -17,22 +18,42 @@ import {
 
 export default function OverviewPage() {
   const [data, setData] = useState<DashboardOverviewResponse | null>(null);
+  const [fileState, setFileState] = useState<ExtractionFileState | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
 
     async function loadPage() {
-      const response = await fetch("/api/dashboard");
+      setLoading(true);
+      const reportsResponse = await fetch("/api/reports", { cache: "no-store" });
+      const reportsPayload = await reportsResponse.json();
+      const nextFileState = getExtractionFileState(reportsPayload);
+
+      if (!nextFileState.hasFiles) {
+        if (isMounted) {
+          setFileState(nextFileState);
+          setData(null);
+          setLoading(false);
+        }
+        return;
+      }
+
+      const response = await fetch("/api/dashboard", { cache: "no-store" });
       const nextData = await response.json();
 
       if (isMounted) {
+        setFileState(nextFileState);
         setData(nextData);
+        setLoading(false);
       }
     }
 
     loadPage().catch(() => {
       if (isMounted) {
         setData(null);
+        setFileState({ hasFiles: false, fileCount: 0, extractedIssueCount: 0 });
+        setLoading(false);
       }
     });
 
@@ -41,8 +62,12 @@ export default function OverviewPage() {
     };
   }, []);
 
-  if (!data) {
+  if (loading) {
     return <DashboardLoadingState />;
+  }
+
+  if (!fileState?.hasFiles || !data) {
+    return <NoExtractionDataState />;
   }
 
   const issueStatusSummary = data.issueStatusSummary ?? [
@@ -51,6 +76,9 @@ export default function OverviewPage() {
     { label: "Closed", value: "0" },
     { label: "Avg days to close", value: "0" },
   ];
+  const overviewMetrics = data.metrics.filter(
+    (metric) => metric.label.toLowerCase() !== "issues / inspection"
+  );
 
   return (
     <div className="space-y-8">
@@ -60,7 +88,7 @@ export default function OverviewPage() {
         description={data.description}
       />
 
-      <DashboardMetricGrid items={data.metrics} />
+      <DashboardMetricGrid items={overviewMetrics} />
 
       <DashboardHighlight
         label="Live tracker"
@@ -173,12 +201,37 @@ export default function OverviewPage() {
   );
 }
 
+function NoExtractionDataState() {
+  return (
+    <div className="space-y-6">
+      <DashboardPageIntro
+        eyebrow="Overview"
+        title="No extraction data available"
+        description="Upload inspection files in Reports or Repository to generate dashboard metrics from extracted data."
+      />
+      <DashboardSection
+        title="Dashboard waiting for files"
+        description="Metrics, issue trends, risk, and common failures will appear here after uploaded files have extraction results."
+      >
+        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center dark:border-white/10 dark:bg-slate-950/55">
+          <p className="text-sm font-semibold text-slate-900 dark:text-white">
+            No uploaded files were found.
+          </p>
+          <p className="mt-2 text-sm/6 text-slate-600 dark:text-slate-300">
+            Deleted files are no longer counted, so stale dashboard metrics are hidden.
+          </p>
+        </div>
+      </DashboardSection>
+    </div>
+  );
+}
+
 function DashboardLoadingState() {
   return (
     <div className="space-y-6">
       <div className="h-24 animate-pulse rounded-3xl bg-white/5" />
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        {Array.from({ length: 5 }).map((_, index) => (
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
           <div key={index} className="h-32 animate-pulse rounded-2xl bg-white/5" />
         ))}
       </div>

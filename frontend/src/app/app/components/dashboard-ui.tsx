@@ -69,7 +69,7 @@ export function DashboardSection(props: {
 
 export function DashboardMetricGrid({ items }: { items: DashboardMetric[] }) {
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       {items.map((item) => (
         <div
           key={item.label}

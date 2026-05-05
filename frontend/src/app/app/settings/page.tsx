@@ -75,22 +75,6 @@ export default function SettingsPage() {
     }
   }
 
-  if (session?.role === "member") {
-    return (
-      <div className="space-y-3">
-        <p className="text-xs/6 font-semibold uppercase tracking-[0.22em] text-indigo-600 dark:text-indigo-300">
-          Settings
-        </p>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
-          Admin access required
-        </h1>
-        <p className="max-w-2xl text-sm/6 text-slate-600 dark:text-slate-300">
-          Tenant settings and member management are available to admin users only.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-3">
@@ -133,7 +117,8 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm dark:border-white/10 dark:bg-slate-900/70 dark:shadow-none">
+      {session?.role === "admin" ? (
+        <section className="rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm dark:border-white/10 dark:bg-slate-900/70 dark:shadow-none">
         <div className="border-b border-slate-200 pb-3.5 dark:border-white/10">
           <h2 className="text-base font-semibold text-slate-900 dark:text-white">Members</h2>
           <p className="mt-1 text-sm/6 text-slate-600 dark:text-slate-400">
@@ -166,7 +151,8 @@ export default function SettingsPage() {
             </div>
           ))}
         </div>
-      </section>
+        </section>
+      ) : null}
     </div>
   );
 }

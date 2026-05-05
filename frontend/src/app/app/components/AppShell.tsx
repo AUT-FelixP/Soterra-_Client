@@ -15,14 +15,11 @@ import {
 } from "@headlessui/react";
 import {
   Bars3Icon,
-  BuildingOffice2Icon,
-  DocumentTextIcon,
-  ExclamationTriangleIcon,
   Cog6ToothIcon,
+  CpuChipIcon,
+  FolderOpenIcon,
   HomeIcon,
   LightBulbIcon,
-  MapPinIcon,
-  PresentationChartLineIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { classNames } from "@/lib/classNames";
@@ -30,29 +27,18 @@ import { AUTH_STORAGE_KEY } from "@/lib/auth";
 import type { PublicAppSession } from "@/lib/auth";
 
 const navigation = [
-  { id: "overview", name: "Overview", href: "/app", icon: HomeIcon },
-  { id: "company", name: "Company", href: "/app/company", icon: BuildingOffice2Icon },
-  { id: "reports", name: "Reports", href: "/app/reports", icon: DocumentTextIcon },
-  { id: "tracker", name: "Live tracker", href: "/app/tracker", icon: MapPinIcon },
-  {
-    id: "performance",
-    name: "Performance",
-    href: "/app/performance",
-    icon: PresentationChartLineIcon,
-  },
+  { id: "overview", name: "Dashboard", href: "/app", icon: HomeIcon },
+  { id: "repository", name: "Repository", href: "/app/repository", icon: FolderOpenIcon },
+  { id: "soterra-ai", name: "Soterra AI", href: "/app/soterra-ai", icon: CpuChipIcon },
   { id: "insights", name: "Insights", href: "/app/insights", icon: LightBulbIcon },
-  { id: "risk", name: "Risk", href: "/app/risk", icon: ExclamationTriangleIcon },
   { id: "settings", name: "Settings", href: "/app/settings", icon: Cog6ToothIcon },
 ] as const;
 
 const breadcrumbMap = new Map([
-  ["/app", "Overview"],
-  ["/app/company", "Company"],
-  ["/app/reports", "Reports"],
-  ["/app/tracker", "Live tracker"],
-  ["/app/performance", "Performance"],
+  ["/app", "Dashboard"],
+  ["/app/repository", "Repository"],
+  ["/app/soterra-ai", "Soterra AI"],
   ["/app/insights", "Insights"],
-  ["/app/risk", "Risk"],
   ["/app/settings", "Settings"],
 ]);
 
@@ -101,10 +87,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     ];
   }, [pathname]);
 
-  const visibleNavigation = useMemo(
-    () => navigation.filter((item) => item.id !== "settings" || session?.role === "admin"),
-    [session?.role]
-  );
+  const visibleNavigation = navigation;
   const initials = (session?.name ?? "Soterra Client")
     .split(/\s+/)
     .filter(Boolean)
