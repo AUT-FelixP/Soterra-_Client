@@ -49,6 +49,7 @@ export async function proxyBackendRequest(
   if (responseContentType) {
     responseHeaders.set("content-type", responseContentType);
   }
+  responseHeaders.set("cache-control", "no-store");
 
   return new Response(buffer, {
     status: response.status,

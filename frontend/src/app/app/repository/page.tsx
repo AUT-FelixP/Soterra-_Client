@@ -50,6 +50,7 @@ export default function RepositoryPage() {
   const [uploadMessage, setUploadMessage] = useState("");
   const [uploadError, setUploadError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const [filters, setFilters] = useState({
     type: "All",
     status: "All",
@@ -124,10 +125,46 @@ export default function RepositoryPage() {
     setSelectedIds((current) => Array.from(new Set([...current, ...filteredIds])));
   }
 
-  function removeSelectedItems() {
-    setItems((current) => current.filter((item) => !selectedIds.includes(item.id)));
-    setUploadMessage(`${selectedIds.length} repository item${selectedIds.length === 1 ? "" : "s"} removed.`);
-    setSelectedIds([]);
+  async function removeSelectedItems() {
+    if (selectedIds.length === 0 || removing) return;
+
+    setRemoving(true);
+    setUploadError("");
+    setUploadMessage("");
+
+    const selectedBackendReportIds = selectedIds.filter((id) => id.startsWith("rpt-"));
+    const deletedBackendReportIds: string[] = [];
+
+    try {
+      if (selectedBackendReportIds.length > 0) {
+        const response = await fetch("/api/reports", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: selectedBackendReportIds }),
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(payload?.detail ?? payload?.message ?? "Unable to delete selected reports.");
+        }
+        if (Array.isArray(payload?.deleted)) {
+          deletedBackendReportIds.push(...payload.deleted);
+        }
+      }
+
+      const removableIds = new Set([
+        ...selectedIds.filter((id) => !id.startsWith("rpt-")),
+        ...deletedBackendReportIds,
+      ]);
+      setItems((current) => current.filter((item) => !removableIds.has(item.id)));
+      setSelectedIds((current) => current.filter((id) => !removableIds.has(id)));
+      setUploadMessage(`${removableIds.size} repository item${removableIds.size === 1 ? "" : "s"} removed.`);
+    } catch (error) {
+      setUploadError(
+        error instanceof Error ? error.message : "Unable to remove selected repository items."
+      );
+    } finally {
+      setRemoving(false);
+    }
   }
 
   function handleDrop(event: React.DragEvent<HTMLDivElement>) {
@@ -357,16 +394,18 @@ export default function RepositoryPage() {
             <button
               type="button"
               onClick={() => setSelectedIds([])}
-              className="rounded-full border border-rose-300 bg-white px-3 py-1.5 text-sm font-semibold text-rose-700 hover:bg-rose-50 dark:border-rose-400/30 dark:bg-white/5 dark:text-rose-100 dark:hover:bg-rose-500/10"
+              disabled={removing}
+              className="rounded-full border border-rose-300 bg-white px-3 py-1.5 text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-70 dark:border-rose-400/30 dark:bg-white/5 dark:text-rose-100 dark:hover:bg-rose-500/10"
             >
               Clear selection
             </button>
             <button
               type="button"
               onClick={removeSelectedItems}
-              className="rounded-full bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-rose-500"
+              disabled={removing}
+              className="rounded-full bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-rose-500 disabled:opacity-70"
             >
-              Remove selected
+              {removing ? "Removing..." : "Remove selected"}
             </button>
           </div>
         </div>

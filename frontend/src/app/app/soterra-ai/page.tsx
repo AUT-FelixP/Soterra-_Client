@@ -11,7 +11,6 @@ import {
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { classNames } from "@/lib/classNames";
-import type { SoterraMetricRoute } from "@/lib/soterraAiMetricRoutes";
 
 type ChatMessage = {
   id: string;
@@ -31,11 +30,15 @@ type AgentRouteCitation = {
 
 type AgentResponse = {
   answer?: string;
-  routes?: AgentRouteCitation[];
+  used_tools?: string[];
+  confidence?: "low" | "medium" | "high";
 };
 
 type AgentManifest = {
-  routes: SoterraMetricRoute[];
+  enabled?: boolean;
+  configured?: boolean;
+  provider?: string;
+  model_id?: string;
 };
 
 const examplePrompts = [
@@ -72,14 +75,14 @@ export default function SoterraAiPage() {
   useEffect(() => {
     let active = true;
 
-    fetch("/api/soterra-ai/metrics", { cache: "no-store" })
+    fetch("/api/agent-chat", { cache: "no-store" })
       .then((response) => {
-        if (!response.ok) throw new Error("Soterra AI tools are unavailable.");
+        if (!response.ok) throw new Error("Soterra AI is unavailable.");
         return response.json() as Promise<AgentManifest>;
       })
       .then((payload) => {
-        if (active && !Array.isArray(payload.routes)) {
-          setManifestError("Soterra AI is not ready yet.");
+        if (active && (!payload.enabled || !payload.configured)) {
+          setManifestError("Soterra AI is not enabled or configured yet.");
         }
       })
       .catch((error) => {
@@ -116,10 +119,13 @@ export default function SoterraAiPage() {
 
   async function answerQuestion(question: string) {
     try {
-      const response = await fetch("/api/soterra-ai/metrics", {
+      const response = await fetch("/api/agent-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, context: selectedContext }),
+        body: JSON.stringify({
+          message: question,
+          page_context: selectedContext,
+        }),
       });
       const payload = (await response.json().catch(() => null)) as AgentResponse | null;
 
@@ -135,7 +141,6 @@ export default function SoterraAiPage() {
           content:
             payload?.answer?.trim() ||
             "Soterra AI checked the records but did not receive a summary.",
-          routes: payload?.routes ?? [],
           state: "ready",
         },
       ]);
