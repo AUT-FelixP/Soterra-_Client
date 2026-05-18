@@ -30,6 +30,8 @@ type AgentRouteCitation = {
 
 type AgentResponse = {
   answer?: string;
+  detail?: string;
+  message?: string;
   used_tools?: string[];
   confidence?: "low" | "medium" | "high";
 };
@@ -130,7 +132,7 @@ export default function SoterraAiPage() {
       const payload = (await response.json().catch(() => null)) as AgentResponse | null;
 
       if (!response.ok) {
-        throw new Error(payload?.answer || "Soterra AI could not check the records.");
+        throw new Error(payload?.answer || payload?.detail || payload?.message || "Soterra AI could not check the records.");
       }
 
       setMessages((current) => [

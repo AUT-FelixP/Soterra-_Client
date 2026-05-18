@@ -7,6 +7,10 @@ import {
   DialogPanel,
   DialogTitle,
 } from "@headlessui/react";
+import {
+  DocumentTextIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
 
 type RepositoryItem = {
   id: string;
@@ -18,12 +22,23 @@ type RepositoryItem = {
   uploadedAt: string;
 };
 
+type ApiReport = {
+  id?: unknown;
+  project?: unknown;
+  site?: unknown;
+  sourceFileName?: unknown;
+  status?: unknown;
+  issues?: unknown;
+  uploadedAt?: unknown;
+  createdAt?: unknown;
+};
+
+type NormalizedApiReport = ApiReport & { id: string };
+
 const typeOptions = ["All", "Files", "Folder", "Zip"] as const;
 const statusOptions = ["All", "Ready", "Encrypted", "Processing"] as const;
-const requiredLabelClassName =
-  "flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-white";
-const requiredBadgeClassName =
-  "inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-500/15 dark:text-amber-200";
+const modalInputClassName =
+  "block w-full rounded-md bg-white/5 px-3 py-2 text-sm text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500";
 
 const repositoryStorageKey = "soterra-repository-items";
 
@@ -51,6 +66,8 @@ export default function RepositoryPage() {
   const [uploadError, setUploadError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [projectName, setProjectName] = useState("");
+  const [siteName, setSiteName] = useState("");
   const [filters, setFilters] = useState({
     type: "All",
     status: "All",
@@ -62,6 +79,45 @@ export default function RepositoryPage() {
   useEffect(() => {
     window.localStorage.setItem(repositoryStorageKey, JSON.stringify(items));
   }, [items]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function syncBackendReports() {
+      try {
+        const response = await fetch("/api/reports", { cache: "no-store" });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || cancelled) return;
+
+        const backendReports = getApiReports(payload);
+        const backendReportIds = new Set(backendReports.map((report) => report.id));
+        const backendReportItems = backendReports.map(apiReportToRepositoryItem);
+
+        setItems((current) => {
+          const repositoryOnlyItems = current.filter((item) => !item.id.startsWith("rpt-"));
+          const localBackendItems = current.filter(
+            (item) => item.id.startsWith("rpt-") && backendReportIds.has(item.id)
+          );
+          const backendItemById = new Map(backendReportItems.map((item) => [item.id, item]));
+          const syncedBackendItems = localBackendItems.map((item) =>
+            mergeBackendRepositoryItem(item, backendItemById.get(item.id))
+          );
+          const syncedBackendIds = new Set(syncedBackendItems.map((item) => item.id));
+          const missingBackendItems = backendReportItems.filter((item) => !syncedBackendIds.has(item.id));
+
+          return [...missingBackendItems, ...syncedBackendItems, ...repositoryOnlyItems];
+        });
+      } catch {
+        // Keep the last local view if the backend is temporarily unavailable.
+      }
+    }
+
+    syncBackendReports();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const filteredItems = useMemo(() => {
     const query = filters.search.trim().toLowerCase();
@@ -82,12 +138,16 @@ export default function RepositoryPage() {
   const allFilteredSelected =
     filteredIds.length > 0 && filteredIds.every((id) => selectedIds.includes(id));
   const queuedSize = queuedFiles.reduce((total, file) => total + file.size, 0);
-  const queuedFolderCount = new Set(
-    queuedFiles
-      .map((file) => getRootFolder(file))
-      .filter((folder): folder is string => Boolean(folder))
-  ).size;
-  const queuedZipCount = queuedFiles.filter((file) => isZipFile(file)).length;
+  const canUpload = queuedFiles.length > 0 && projectName.trim().length > 0 && siteName.trim().length > 0 && !submitting;
+
+  useEffect(() => {
+    if (!modalOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [modalOpen]);
 
   function queueFiles(nextFiles: FileList | File[]) {
     const files = Array.from(nextFiles);
@@ -149,6 +209,9 @@ export default function RepositoryPage() {
         if (Array.isArray(payload?.deleted)) {
           deletedBackendReportIds.push(...payload.deleted);
         }
+        if (Array.isArray(payload?.missing)) {
+          deletedBackendReportIds.push(...payload.missing);
+        }
       }
 
       const removableIds = new Set([
@@ -172,6 +235,11 @@ export default function RepositoryPage() {
     queueFiles(event.dataTransfer.files);
   }
 
+  function removeQueuedFile(targetFile: File) {
+    const targetKey = fileKey(targetFile);
+    setQueuedFiles((current) => current.filter((file) => fileKey(file) !== targetKey));
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting) return;
@@ -180,7 +248,7 @@ export default function RepositoryPage() {
     setUploadError("");
 
     if (queuedFiles.length === 0) {
-      setUploadError("Choose files, folders, or zip contents before uploading.");
+      setUploadError("Choose at least one PDF report before uploading.");
       return;
     }
 
@@ -188,8 +256,8 @@ export default function RepositoryPage() {
 
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
-    const projectName = String(form.get("projectName") ?? "").trim();
-    const siteName = String(form.get("siteName") ?? "").trim();
+    const nextProjectName = projectName.trim();
+    const nextSiteName = siteName.trim();
     const encrypted = form.get("encryptFiles") === "on";
     const zipContents = form.get("zipContents") === "on";
     const extractableFiles = queuedFiles.filter(isPdfFile);
@@ -205,8 +273,8 @@ export default function RepositoryPage() {
     for (const file of extractableFiles) {
       const reportForm = new FormData();
       reportForm.append("file", file);
-      reportForm.append("project", projectName);
-      reportForm.append("site", siteName);
+      reportForm.append("project", nextProjectName);
+      reportForm.append("site", nextSiteName);
       reportForm.append("status", "Reviewing");
       reportForm.append("trade", "General");
 
@@ -246,7 +314,7 @@ export default function RepositoryPage() {
     if (looseFiles.length > 0) {
       nextItems.push({
         id: `repo-files-${Date.now()}`,
-        name: projectName ? `${projectName} files` : `${looseFiles.length} uploaded file${looseFiles.length === 1 ? "" : "s"}`,
+        name: nextProjectName ? `${nextProjectName} files` : `${looseFiles.length} uploaded file${looseFiles.length === 1 ? "" : "s"}`,
         type: zipContents || looseFiles.some(isZipFile) ? "Zip" : "Files",
         itemCount: looseFiles.length,
         size: looseFiles.reduce((total, file) => total + file.size, 0),
@@ -275,6 +343,8 @@ export default function RepositoryPage() {
 
     if (uploadedReports.length > 0 || repositoryOnlyFiles.length > 0) {
       setQueuedFiles([]);
+      setProjectName("");
+      setSiteName("");
       setModalOpen(false);
       formElement.reset();
     }
@@ -487,209 +557,239 @@ export default function RepositoryPage() {
       <Dialog open={modalOpen} onClose={setModalOpen} className="relative z-50">
         <DialogBackdrop
           transition
-          className="fixed inset-0 bg-gray-900/60 transition-opacity data-closed:opacity-0"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity data-closed:opacity-0"
         />
 
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <DialogPanel
             transition
-            className="w-full max-w-2xl transform rounded-xl bg-white p-5 shadow-xl transition data-closed:scale-95 data-closed:opacity-0 dark:bg-gray-900 dark:outline dark:-outline-offset-1 dark:outline-white/10"
+            className="flex max-h-[calc(100vh-2rem)] w-full max-w-2xl transform flex-col overflow-hidden rounded-2xl bg-gray-900 shadow-2xl ring-1 ring-white/10 transition data-closed:scale-95 data-closed:opacity-0"
           >
-            <DialogTitle className="text-base font-semibold text-gray-900 dark:text-white">
-              Upload repository content
-            </DialogTitle>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Add files, complete folders, or zip contents for client repository storage.
-            </p>
-            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-              Fields marked as <span className={requiredBadgeClassName}>Required</span> must
-              be completed before upload.
-            </p>
-
-            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-              {uploadError ? (
-                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-200">
-                  {uploadError}
-                </div>
-              ) : null}
-
-              <div>
-                <label className={requiredLabelClassName}>
-                  Repository content
-                  <span className={requiredBadgeClassName}>Required</span>
-                </label>
-                <div
-                  onDragOver={(event) => event.preventDefault()}
-                  onDrop={handleDrop}
-                  className="mt-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center transition hover:border-indigo-300 dark:border-white/10 dark:bg-slate-950/55"
-                >
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                    Drop files, folders, or zip files here
+            <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+              <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-6 sm:py-5">
+                <div className="min-w-0">
+                  <DialogTitle className="text-base font-semibold text-white">
+                    Upload inspection reports
+                  </DialogTitle>
+                  <p className="mt-1 text-sm/6 text-gray-400">
+                    Add PDF reports for a project or site. We&apos;ll organise them for analysis.
                   </p>
-                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    Multiple selections are accepted. Folder paths are preserved by the browser where supported.
-                  </p>
-                  <div className="mt-4 flex flex-wrap justify-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="rounded-md bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-200 dark:hover:bg-indigo-500/20"
-                    >
-                      Choose files or zips
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        folderInputRef.current?.setAttribute("webkitdirectory", "");
-                        folderInputRef.current?.setAttribute("directory", "");
-                        folderInputRef.current?.click();
-                      }}
-                      className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-xs inset-ring inset-ring-slate-300 hover:bg-slate-50 dark:bg-white/10 dark:text-white dark:shadow-none dark:inset-ring-white/5 dark:hover:bg-white/20"
-                    >
-                      Choose folders
-                    </button>
-                  </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.zip,application/zip,application/pdf,image/*"
-                    onChange={(event) => {
-                      if (event.currentTarget.files) {
-                        queueFiles(event.currentTarget.files);
-                      }
-                      event.currentTarget.value = "";
-                    }}
-                    className="sr-only"
-                  />
-                  <input
-                    ref={folderInputRef}
-                    type="file"
-                    multiple
-                    onChange={(event) => {
-                      if (event.currentTarget.files) {
-                        queueFiles(event.currentTarget.files);
-                      }
-                      event.currentTarget.value = "";
-                    }}
-                    className="sr-only"
-                  />
                 </div>
-              </div>
-
-              {queuedFiles.length > 0 ? (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-slate-950/55">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                        {queuedFiles.length} file{queuedFiles.length === 1 ? "" : "s"} selected
-                      </p>
-                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                        {queuedFolderCount} folder{queuedFolderCount === 1 ? "" : "s"} detected, {queuedZipCount} zip file{queuedZipCount === 1 ? "" : "s"}, {formatBytes(queuedSize)}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setQueuedFiles([])}
-                      className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-900 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
-                    >
-                      Clear queue
-                    </button>
-                  </div>
-                  <div className="mt-4 max-h-36 overflow-y-auto rounded-lg border border-slate-200 bg-white dark:border-white/10 dark:bg-slate-900">
-                    {queuedFiles.slice(0, 8).map((file) => (
-                      <div
-                        key={fileKey(file)}
-                        className="flex items-center justify-between gap-4 border-b border-slate-100 px-3 py-2 text-sm last:border-b-0 dark:border-white/10"
-                      >
-                        <span className="min-w-0 truncate text-slate-700 dark:text-slate-200">
-                          {file.webkitRelativePath || file.name}
-                        </span>
-                        <span className="shrink-0 text-slate-500 dark:text-slate-400">
-                          {formatBytes(file.size)}
-                        </span>
-                      </div>
-                    ))}
-                    {queuedFiles.length > 8 ? (
-                      <div className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">
-                        + {queuedFiles.length - 8} more
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              ) : null}
-
-              <div>
-                <label className={requiredLabelClassName}>
-                  Project or repository name
-                  <span className={requiredBadgeClassName}>Required</span>
-                </label>
-                <input
-                  name="projectName"
-                  required
-                  placeholder="Enter project or repository name"
-                  className="mt-2 w-full rounded-md bg-white px-3 py-2 text-sm text-gray-900 outline-1 -outline-offset-1 outline-amber-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 dark:bg-white/5 dark:text-white dark:outline-amber-300/60 dark:focus:outline-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className={requiredLabelClassName}>
-                  Site
-                  <span className={requiredBadgeClassName}>Required</span>
-                </label>
-                <input
-                  name="siteName"
-                  required
-                  placeholder="Enter site name"
-                  className="mt-2 w-full rounded-md bg-white px-3 py-2 text-sm text-gray-900 outline-1 -outline-offset-1 outline-amber-300 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 dark:bg-white/5 dark:text-white dark:outline-amber-300/60 dark:focus:outline-indigo-500"
-                />
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
-                  <input
-                    name="zipContents"
-                    type="checkbox"
-                    className="mt-1 size-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 dark:border-white/20 dark:bg-slate-950"
-                  />
-                  <span>
-                    <span className="block font-semibold text-slate-900 dark:text-white">
-                      Zip contents
-                    </span>
-                    Package selected folders or file groups before backend handoff.
-                  </span>
-                </label>
-                <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
-                  <input
-                    name="encryptFiles"
-                    type="checkbox"
-                    defaultChecked
-                    className="mt-1 size-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 dark:border-white/20 dark:bg-slate-950"
-                  />
-                  <span>
-                    <span className="block font-semibold text-slate-900 dark:text-white">
-                      Encrypt files
-                    </span>
-                    Mark uploaded content for encrypted repository storage.
-                  </span>
-                </label>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-xs inset-ring inset-ring-gray-300 hover:bg-gray-50 dark:bg-white/10 dark:text-white dark:shadow-none dark:inset-ring-white/5 dark:hover:bg-white/20"
+                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-md bg-white/5 text-gray-300 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
                 >
-                  Cancel
+                  <XMarkIcon className="size-5" aria-hidden="true" />
+                  <span className="sr-only">Close upload modal</span>
                 </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-70 dark:bg-indigo-500 dark:hover:bg-indigo-400 dark:focus-visible:outline-indigo-500"
-                >
-                  {submitting ? "Uploading..." : "Upload content"}
-                </button>
+              </div>
+
+              <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5 sm:px-6">
+                {uploadError ? (
+                  <div className="rounded-md border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm/6 text-rose-100">
+                    {uploadError}
+                  </div>
+                ) : null}
+
+                <section>
+                  <div
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={handleDrop}
+                    className="rounded-xl border border-dashed border-white/15 bg-white/[0.03] px-4 py-5 text-center transition hover:border-indigo-400/60 hover:bg-white/[0.05]"
+                  >
+                    <p className="text-sm font-semibold text-white">
+                      Drop PDF reports here
+                    </p>
+                    <p className="mt-1 text-sm text-gray-400">
+                      or choose files from your computer
+                    </p>
+                    <div className="mt-4 flex flex-wrap justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="rounded-md bg-white/10 px-4 py-2 text-sm font-semibold text-gray-100 transition hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                      >
+                        Choose files
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          folderInputRef.current?.setAttribute("webkitdirectory", "");
+                          folderInputRef.current?.setAttribute("directory", "");
+                          folderInputRef.current?.click();
+                        }}
+                        className="rounded-md bg-white/10 px-4 py-2 text-sm font-semibold text-gray-100 transition hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                      >
+                        Choose folder
+                      </button>
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.zip,application/zip,application/pdf,image/*"
+                      onChange={(event) => {
+                        if (event.currentTarget.files) {
+                          queueFiles(event.currentTarget.files);
+                        }
+                        event.currentTarget.value = "";
+                      }}
+                      className="sr-only"
+                    />
+                    <input
+                      ref={folderInputRef}
+                      type="file"
+                      multiple
+                      onChange={(event) => {
+                        if (event.currentTarget.files) {
+                          queueFiles(event.currentTarget.files);
+                        }
+                        event.currentTarget.value = "";
+                      }}
+                      className="sr-only"
+                    />
+                  </div>
+                </section>
+
+                {queuedFiles.length > 0 ? (
+                  <section className="space-y-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                      <div>
+                        <h3 className="text-sm font-semibold text-white">Selected reports</h3>
+                        <p className="mt-1 text-xs/5 text-gray-400">
+                          {queuedFiles.length} report{queuedFiles.length === 1 ? "" : "s"} selected • {formatBytes(queuedSize)}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setQueuedFiles([])}
+                        className="self-start rounded-md px-2.5 py-1.5 text-xs font-semibold text-gray-300 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 sm:self-auto"
+                      >
+                        Clear all
+                      </button>
+                    </div>
+
+                    <div className="max-h-48 overflow-y-auto rounded-xl border border-white/10 bg-black/15">
+                      {queuedFiles.map((file) => (
+                        <div
+                          key={fileKey(file)}
+                          className="flex items-center gap-3 border-b border-white/10 px-3 py-2.5 last:border-b-0"
+                        >
+                          <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-md bg-indigo-500/15 text-indigo-200">
+                            <DocumentTextIcon className="size-4" aria-hidden="true" />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-gray-100">
+                              {file.webkitRelativePath || file.name}
+                            </p>
+                            <p className="text-xs text-gray-500">{formatBytes(file.size)}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeQueuedFile(file)}
+                            className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-gray-400 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                          >
+                            <XMarkIcon className="size-4" aria-hidden="true" />
+                            <span className="sr-only">Remove {file.name}</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
+
+                <section className="space-y-4">
+                  <h3 className="text-sm font-semibold text-white">Details</h3>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label htmlFor="repository-project-name" className="block text-sm font-medium text-gray-200">
+                        Project name <span className="text-indigo-300">*</span>
+                      </label>
+                      <input
+                        id="repository-project-name"
+                        name="projectName"
+                        required
+                        value={projectName}
+                        onChange={(event) => setProjectName(event.target.value)}
+                        placeholder="Kauri Apartments"
+                        className={`${modalInputClassName} mt-2`}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="repository-site-name" className="block text-sm font-medium text-gray-200">
+                        Site <span className="text-indigo-300">*</span>
+                      </label>
+                      <input
+                        id="repository-site-name"
+                        name="siteName"
+                        required
+                        value={siteName}
+                        onChange={(event) => setSiteName(event.target.value)}
+                        placeholder="24 Kauri Road"
+                        className={`${modalInputClassName} mt-2`}
+                      />
+                    </div>
+                  </div>
+                </section>
+
+                <details className="group rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                  <summary className="cursor-pointer list-none text-sm font-semibold text-gray-200 outline-none focus-visible:rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
+                    Advanced options
+                    <span className="ml-2 text-xs font-normal text-gray-500 group-open:hidden">Show</span>
+                    <span className="ml-2 hidden text-xs font-normal text-gray-500 group-open:inline">Hide</span>
+                  </summary>
+                  <div className="mt-4 space-y-3">
+                    <label className="flex items-start gap-3 text-sm text-gray-300">
+                      <input
+                        name="zipContents"
+                        type="checkbox"
+                        className="mt-1 size-4 rounded border-white/20 bg-white/5 text-indigo-500 focus:ring-2 focus:ring-indigo-500"
+                      />
+                      <span>
+                        <span className="block font-medium text-gray-100">Package files before upload</span>
+                        <span className="text-xs/5 text-gray-500">Useful when uploading folders.</span>
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-3 text-sm text-gray-300">
+                      <input
+                        name="encryptFiles"
+                        type="checkbox"
+                        defaultChecked
+                        className="mt-1 size-4 rounded border-white/20 bg-white/5 text-indigo-500 focus:ring-2 focus:ring-indigo-500"
+                      />
+                      <span>
+                        <span className="block font-medium text-gray-100">Keep files protected</span>
+                        <span className="text-xs/5 text-gray-500">Recommended for inspection reports.</span>
+                      </span>
+                    </label>
+                  </div>
+                </details>
+              </div>
+
+              <div className="sticky bottom-0 flex flex-col gap-3 border-t border-white/10 bg-gray-900/95 px-5 py-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                <p className="text-sm text-gray-400">
+                  {queuedFiles.length > 0
+                    ? `${queuedFiles.length} report${queuedFiles.length === 1 ? "" : "s"} ready to upload`
+                    : "Choose PDF reports to continue"}
+                </p>
+                <div className="flex shrink-0 flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setModalOpen(false)}
+                    disabled={submitting}
+                    className="rounded-md bg-white/10 px-4 py-2 text-sm font-semibold text-gray-100 transition hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!canUpload}
+                    className="rounded-md bg-indigo-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {submitting ? "Uploading..." : "Upload content"}
+                  </button>
+                </div>
               </div>
             </form>
           </DialogPanel>
@@ -755,6 +855,61 @@ function isRepositoryItem(value: unknown): value is RepositoryItem {
     (item.status === "Ready" || item.status === "Encrypted" || item.status === "Processing") &&
     typeof item.uploadedAt === "string"
   );
+}
+
+function getApiReports(payload: unknown): NormalizedApiReport[] {
+  const items = payload && typeof payload === "object" && "items" in payload ? payload.items : null;
+  if (!Array.isArray(items)) return [];
+
+  return items.filter((item): item is NormalizedApiReport => {
+    if (!item || typeof item !== "object") return false;
+    const report = item as ApiReport;
+    return typeof report.id === "string" && report.id.trim().length > 0;
+  });
+}
+
+function apiReportToRepositoryItem(report: NormalizedApiReport): RepositoryItem {
+  const issues = Array.isArray(report.issues) ? report.issues : [];
+  const status = typeof report.status === "string" ? report.status : "";
+  const uploadedAt =
+    typeof report.uploadedAt === "string" && report.uploadedAt.trim()
+      ? report.uploadedAt
+      : typeof report.createdAt === "string" && report.createdAt.trim()
+        ? report.createdAt
+        : new Date().toISOString();
+
+  return {
+    id: report.id,
+    name: reportName(report),
+    type: "Files",
+    itemCount: 1,
+    size: 0,
+    status: status === "Completed" || issues.length > 0 ? "Ready" : "Processing",
+    uploadedAt,
+  };
+}
+
+function mergeBackendRepositoryItem(current: RepositoryItem, backendItem: RepositoryItem | undefined): RepositoryItem {
+  if (!backendItem) return current;
+
+  return {
+    ...backendItem,
+    size: current.size,
+    uploadedAt: backendItem.uploadedAt || current.uploadedAt,
+  };
+}
+
+function reportName(report: ApiReport) {
+  if (typeof report.sourceFileName === "string" && report.sourceFileName.trim()) {
+    return report.sourceFileName;
+  }
+  if (typeof report.project === "string" && report.project.trim()) {
+    return report.project;
+  }
+  if (typeof report.site === "string" && report.site.trim()) {
+    return report.site;
+  }
+  return "Inspection report";
 }
 
 function loadStoredRepositoryItems() {

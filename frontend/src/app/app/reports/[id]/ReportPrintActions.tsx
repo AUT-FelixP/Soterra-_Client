@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+const repositoryStorageKey = "soterra-repository-items";
+
 export function ReportPrintActions({ reportId }: { reportId: string }) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
@@ -21,6 +23,7 @@ export function ReportPrintActions({ reportId }: { reportId: string }) {
         const payload = await response.json().catch(() => null);
         throw new Error(payload?.detail ?? payload?.message ?? "Unable to delete report.");
       }
+      removeRepositoryItemsFromStorage([reportId]);
       router.push("/app/reports");
       router.refresh();
     } catch (error) {
@@ -48,4 +51,20 @@ export function ReportPrintActions({ reportId }: { reportId: string }) {
       </button>
     </>
   );
+}
+
+function removeRepositoryItemsFromStorage(reportIds: string[]) {
+  if (typeof window === "undefined" || reportIds.length === 0) return;
+  const storedItems = window.localStorage.getItem(repositoryStorageKey);
+  if (!storedItems) return;
+  try {
+    const parsed = JSON.parse(storedItems);
+    if (!Array.isArray(parsed)) return;
+    window.localStorage.setItem(
+      repositoryStorageKey,
+      JSON.stringify(parsed.filter((item) => !item || typeof item !== "object" || !reportIds.includes(String(item.id ?? ""))))
+    );
+  } catch {
+    window.localStorage.removeItem(repositoryStorageKey);
+  }
 }

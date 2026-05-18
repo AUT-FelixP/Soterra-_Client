@@ -123,9 +123,9 @@ export default function OverviewPage() {
           description="Inspections that may need extra attention soon"
         >
           <div className="space-y-4">
-            {data.upcomingRisks.map((risk) => (
+            {data.upcomingRisks.map((risk, index) => (
               <div
-                key={risk.title}
+                key={`${risk.title}-${risk.subtitle}-${risk.daysAway}-${risk.level}-${index}`}
                 className="flex items-start justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 dark:border-white/10 dark:bg-slate-950/55"
               >
                 <div>

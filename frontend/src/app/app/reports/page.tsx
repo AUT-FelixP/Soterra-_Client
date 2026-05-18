@@ -42,6 +42,7 @@ type ApiReport = Partial<Report> & {
 };
 
 const statusOptions = ["All", "Reviewing", "In progress", "Completed"] as const;
+const repositoryStorageKey = "soterra-repository-items";
 const processingUploadMessage =
   "The file is uploaded and the data extraction is in progress.";
 const requiredLabelClassName =
@@ -293,6 +294,7 @@ export default function ReportsPage() {
       }
 
       const deletedIds = Array.isArray(payload?.deleted) ? payload.deleted : [];
+      removeRepositoryItemsFromStorage(deletedIds);
       setReports((current) => current.filter((report) => !deletedIds.includes(report.id)));
       setSelectedReportIds((current) => current.filter((id) => !deletedIds.includes(id)));
       setUploadMessage(
@@ -760,4 +762,20 @@ export default function ReportsPage() {
       </Dialog>
     </div>
   );
+}
+
+function removeRepositoryItemsFromStorage(reportIds: string[]) {
+  if (typeof window === "undefined" || reportIds.length === 0) return;
+  const storedItems = window.localStorage.getItem(repositoryStorageKey);
+  if (!storedItems) return;
+  try {
+    const parsed = JSON.parse(storedItems);
+    if (!Array.isArray(parsed)) return;
+    window.localStorage.setItem(
+      repositoryStorageKey,
+      JSON.stringify(parsed.filter((item) => !item || typeof item !== "object" || !reportIds.includes(String(item.id ?? ""))))
+    );
+  } catch {
+    window.localStorage.removeItem(repositoryStorageKey);
+  }
 }
