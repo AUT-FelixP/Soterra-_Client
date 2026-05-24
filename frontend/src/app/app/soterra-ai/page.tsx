@@ -748,18 +748,22 @@ function MessageBlock({ message }: { message: ChatMessage }) {
   return (
     <article className={classNames("flex items-start gap-2", isUser ? "justify-end" : "")}>
       {!isUser ? <Avatar role="assistant" state={message.state} /> : null}
-      <div className={classNames("min-w-0", isUser ? "order-1 max-w-[78%]" : "w-full max-w-[min(80%,56rem)]")}>
+      <div className={classNames("min-w-0", isUser ? "order-1 max-w-[78%]" : "w-full max-w-[min(92%,64rem)]")}>
         <div
           className={classNames(
-            "whitespace-pre-wrap rounded-xl px-4 py-3 text-sm/6",
+            "rounded-xl text-sm/6",
             isUser
-              ? "bg-indigo-600 text-white shadow-sm dark:bg-indigo-500"
+              ? "bg-indigo-600 px-4 py-3 text-white shadow-sm dark:bg-indigo-500"
               : message.state === "error"
-                ? "border border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-100"
-                : "border border-slate-200 bg-slate-50 text-slate-700 dark:border-white/10 dark:bg-slate-800/80 dark:text-slate-100"
+                ? "border border-rose-200 bg-rose-50 px-4 py-3 text-rose-800 dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-100"
+                : "text-slate-700 dark:text-slate-100"
           )}
         >
-          {message.content}
+          {isUser || message.state === "error" ? (
+            <span className="whitespace-pre-wrap">{message.content}</span>
+          ) : (
+            <AgentAnswer content={message.content} />
+          )}
         </div>
         {!isUser && message.routes?.length ? (
           <div className="mt-2 text-xs/5 text-slate-500 dark:text-slate-400">
@@ -770,6 +774,389 @@ function MessageBlock({ message }: { message: ChatMessage }) {
       {isUser ? <Avatar role="user" /> : null}
     </article>
   );
+}
+
+type AnswerBlock =
+  | { type: "paragraph"; text: string }
+  | { type: "ordered-list"; items: string[] }
+  | { type: "table"; headers: string[]; rows: string[][] };
+
+function AgentAnswer({ content }: { content: string }) {
+  const blocks = parseAgentAnswer(content);
+  const summary = extractAnswerSummary(content, blocks);
+
+  return (
+    <div className="space-y-4">
+      {blocks.map((block, index) => {
+        if (block.type === "paragraph") {
+          return (
+            <p
+              key={`paragraph-${index}`}
+              className={classNames(
+                "rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm/6 text-slate-700 shadow-sm dark:border-white/10 dark:bg-gray-950/50 dark:text-slate-100",
+                index === 0 ? "text-[15px]/7 font-medium" : ""
+              )}
+            >
+              {block.text}
+            </p>
+          );
+        }
+
+        if (block.type === "ordered-list") {
+          return (
+            <div key={`list-${index}`} className="rounded-lg border border-indigo-100 bg-white p-3 dark:border-indigo-300/20 dark:bg-gray-950/40">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-indigo-700 dark:text-indigo-200">
+                Suggested fix order
+              </p>
+              <ol className="space-y-2">
+                {block.items.map((item, itemIndex) => (
+                  <li key={`${item}-${itemIndex}`} className="flex gap-2 text-sm/6 text-slate-700 dark:text-slate-100">
+                    <span className="mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700 dark:bg-indigo-400/20 dark:text-indigo-100">
+                      {itemIndex + 1}
+                    </span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          );
+        }
+
+        return <AnswerTable key={`table-${index}`} block={block} summary={summary} />;
+      })}
+    </div>
+  );
+}
+
+function AnswerTable({
+  block,
+  summary,
+}: {
+  block: Extract<AnswerBlock, { type: "table" }>;
+  summary: AnswerSummary;
+}) {
+  const issueTable = isIssueTable(block.headers);
+
+  if (issueTable) {
+    const indexes = issueColumnIndexes(block.headers);
+    const issues = block.rows.map((row) => ({
+      priority: row[indexes.priority],
+      issue: row[indexes.issue],
+      location: row[indexes.location],
+      trade: row[indexes.trade],
+      source: row[indexes.source],
+      action: row[indexes.action],
+    }));
+    return <IssueDigest issues={issues} summary={summary} />;
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-white/10 dark:bg-gray-950/40">
+      <table className="min-w-full border-collapse text-left text-xs/5">
+        <thead className="bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-300">
+          <tr>
+            {block.headers.map((header) => (
+              <th key={header} scope="col" className="border-b border-slate-200 px-3 py-2 font-semibold dark:border-white/10">
+                {header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {block.rows.map((row, rowIndex) => (
+            <tr key={`${row.join("-")}-${rowIndex}`} className="border-b border-slate-100 last:border-0 dark:border-white/10">
+              {row.map((cell, cellIndex) => (
+                <td key={`${cell}-${cellIndex}`} className="max-w-72 px-3 py-2 align-top text-slate-700 dark:text-slate-100">
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+type AnswerSummary = {
+  totalOpen?: number;
+  highPriority?: number;
+  overdue?: number;
+  project?: string;
+  address?: string;
+};
+
+type IssueDisplay = {
+  priority?: string;
+  issue?: string;
+  location?: string;
+  trade?: string;
+  source?: string;
+  action?: string;
+};
+
+function IssueDigest({
+  issues,
+  summary,
+}: {
+  issues: IssueDisplay[];
+  summary: AnswerSummary;
+}) {
+  const visibleIssues = issues.slice(0, 6);
+  const hiddenIssues = issues.slice(6);
+  const criticalCount = issues.filter((issue) => String(issue.priority ?? "").toLowerCase().includes("critical")).length;
+  const highCount = issues.filter((issue) => String(issue.priority ?? "").toLowerCase().includes("high")).length;
+
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-gray-950/50">
+      <div className="flex flex-wrap gap-2">
+        <SummaryPill label="Open" value={summary.totalOpen ?? issues.length} tone="slate" />
+        <SummaryPill label="High priority" value={summary.highPriority ?? criticalCount + highCount} tone="amber" />
+        <SummaryPill label="Overdue" value={summary.overdue ?? 0} tone="rose" />
+      </div>
+
+      {summary.project || summary.address ? (
+        <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm/6 text-slate-700 dark:bg-white/5 dark:text-slate-200">
+          <span className="font-semibold">{summary.project || "Project"}</span>
+          {summary.address ? <span className="text-slate-500 dark:text-slate-400"> · {summary.address}</span> : null}
+        </div>
+      ) : null}
+
+      <div className="mt-4 space-y-3">
+        {visibleIssues.map((issue, index) => (
+          <IssueCard key={`${issue.issue ?? "issue"}-${index}`} {...issue} />
+        ))}
+      </div>
+
+      {hiddenIssues.length ? (
+        <details className="mt-3 rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5">
+          <summary className="cursor-pointer px-3 py-2 text-sm font-semibold text-slate-700 hover:text-indigo-700 dark:text-slate-100 dark:hover:text-indigo-200">
+            Show {hiddenIssues.length} more issues
+          </summary>
+          <div className="space-y-3 border-t border-slate-200 p-3 dark:border-white/10">
+            {hiddenIssues.map((issue, index) => (
+              <IssueCard key={`${issue.issue ?? "hidden-issue"}-${index}`} {...issue} compact />
+            ))}
+          </div>
+        </details>
+      ) : null}
+    </section>
+  );
+}
+
+function SummaryPill({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "slate" | "amber" | "rose";
+}) {
+  const toneClass =
+    tone === "amber"
+      ? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-300/20 dark:bg-amber-300/10 dark:text-amber-100"
+      : tone === "rose"
+        ? "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-300/20 dark:bg-rose-300/10 dark:text-rose-100"
+        : "border-slate-200 bg-slate-50 text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-100";
+
+  return (
+    <div className={classNames("rounded-lg border px-3 py-2", toneClass)}>
+      <div className="text-lg/5 font-semibold">{value}</div>
+      <div className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] opacity-80">{label}</div>
+    </div>
+  );
+}
+
+function IssueCard({
+  priority,
+  issue,
+  location,
+  trade,
+  source,
+  action,
+  compact = false,
+}: {
+  priority?: string;
+  issue?: string;
+  location?: string;
+  trade?: string;
+  source?: string;
+  action?: string;
+  compact?: boolean;
+}) {
+  return (
+    <article className="rounded-lg border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-gray-900/60">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <h3 className="min-w-0 flex-1 text-[15px]/6 font-semibold text-slate-900 dark:text-white">
+          {issue || "Open issue"}
+        </h3>
+        <span
+          className={classNames(
+            "inline-flex shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold",
+            priorityTone(priority)
+          )}
+        >
+          {priority || "Priority"}
+        </span>
+      </div>
+      <dl className={classNames("mt-3 grid gap-2", compact ? "sm:grid-cols-2" : "sm:grid-cols-3")}>
+        <MetaItem label="Location" value={location} wide={!compact} />
+        <MetaItem label="Trade" value={trade} />
+        <MetaItem label="Source" value={source} wide={!compact} />
+      </dl>
+      <div className="mt-3 rounded-md border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm/6 text-emerald-900 dark:border-emerald-300/10 dark:bg-emerald-400/10 dark:text-emerald-100">
+        <span className="font-semibold">Recommended action: </span>
+        {action || "Assign the responsible trade and upload close-out evidence."}
+      </div>
+    </article>
+  );
+}
+
+function MetaItem({
+  label,
+  value,
+  wide = false,
+}: {
+  label: string;
+  value?: string;
+  wide?: boolean;
+}) {
+  return (
+    <div className={classNames("min-w-0", wide ? "sm:col-span-2" : "")}>
+      <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+        {label}
+      </dt>
+      <dd className="mt-0.5 text-sm/5 text-slate-700 dark:text-slate-100">
+        {value || "Not specified"}
+      </dd>
+    </div>
+  );
+}
+
+function parseAgentAnswer(content: string): AnswerBlock[] {
+  const lines = content.split(/\r?\n/);
+  const blocks: AnswerBlock[] = [];
+  let paragraph: string[] = [];
+  let index = 0;
+
+  function flushParagraph() {
+    const text = paragraph.join(" ").trim();
+    if (text && text.toLowerCase() !== "suggested fix order:") {
+      blocks.push({ type: "paragraph", text });
+    }
+    paragraph = [];
+  }
+
+  while (index < lines.length) {
+    const line = lines[index].trim();
+    if (!line) {
+      flushParagraph();
+      index += 1;
+      continue;
+    }
+
+    if (isMarkdownTableStart(lines, index)) {
+      flushParagraph();
+      const headers = splitMarkdownRow(lines[index]);
+      index += 2;
+      const rows: string[][] = [];
+      while (index < lines.length && lines[index].trim().startsWith("|")) {
+        const row = splitMarkdownRow(lines[index]);
+        if (row.length === headers.length) rows.push(row);
+        index += 1;
+      }
+      blocks.push({ type: "table", headers, rows });
+      continue;
+    }
+
+    if (/^\d+\.\s+/.test(line)) {
+      flushParagraph();
+      const items: string[] = [];
+      while (index < lines.length && /^\d+\.\s+/.test(lines[index].trim())) {
+        items.push(lines[index].trim().replace(/^\d+\.\s+/, ""));
+        index += 1;
+      }
+      blocks.push({ type: "ordered-list", items });
+      continue;
+    }
+
+    paragraph.push(line);
+    index += 1;
+  }
+
+  flushParagraph();
+  return blocks;
+}
+
+function extractAnswerSummary(content: string, blocks: AnswerBlock[]): AnswerSummary {
+  const firstParagraph = blocks.find((block) => block.type === "paragraph")?.text ?? content;
+  const totalOpen = firstNumberMatch(firstParagraph, /found\s+(\d+)\s+open issues/i);
+  const highPriority = firstNumberMatch(firstParagraph, /(\d+)\s+are high priority/i);
+  const overdue = firstNumberMatch(firstParagraph, /(\d+)\s+are overdue/i);
+  const projectMatch = firstParagraph.match(/open issues for (.*?) at /i);
+  const addressMatch = firstParagraph.match(/ at (.*?)(?:\.\s|\.$)/i);
+
+  return {
+    totalOpen,
+    highPriority,
+    overdue,
+    project: projectMatch?.[1],
+    address: addressMatch?.[1],
+  };
+}
+
+function firstNumberMatch(text: string, pattern: RegExp) {
+  const match = text.match(pattern);
+  return match?.[1] ? Number(match[1]) : undefined;
+}
+
+function isMarkdownTableStart(lines: string[], index: number) {
+  const current = lines[index]?.trim() ?? "";
+  const next = lines[index + 1]?.trim() ?? "";
+  return current.startsWith("|") && current.endsWith("|") && /^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?$/.test(next);
+}
+
+function splitMarkdownRow(line: string) {
+  return line
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((cell) => cell.trim());
+}
+
+function isIssueTable(headers: string[]) {
+  const normalized = headers.map((header) => header.toLowerCase());
+  return ["priority", "issue", "location", "trade", "source", "recommended action"].every((header) =>
+    normalized.includes(header)
+  );
+}
+
+function issueColumnIndexes(headers: string[]) {
+  const normalized = headers.map((header) => header.toLowerCase());
+  return {
+    priority: normalized.indexOf("priority"),
+    issue: normalized.indexOf("issue"),
+    location: normalized.indexOf("location"),
+    trade: normalized.indexOf("trade"),
+    source: normalized.indexOf("source"),
+    action: normalized.indexOf("recommended action"),
+  };
+}
+
+function priorityTone(priority?: string) {
+  const normalized = String(priority ?? "").toLowerCase();
+  if (normalized.includes("critical")) {
+    return "bg-rose-100 text-rose-700 dark:bg-rose-400/15 dark:text-rose-100";
+  }
+  if (normalized.includes("high")) {
+    return "bg-amber-100 text-amber-800 dark:bg-amber-300/15 dark:text-amber-100";
+  }
+  if (normalized.includes("medium")) {
+    return "bg-sky-100 text-sky-700 dark:bg-sky-300/15 dark:text-sky-100";
+  }
+  return "bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-200";
 }
 
 function friendlySourceName(name: string) {
