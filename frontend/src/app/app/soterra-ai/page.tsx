@@ -4,17 +4,21 @@ import type { FormEvent, MutableRefObject, RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowPathIcon,
+  ChatBubbleLeftRightIcon,
   CheckCircleIcon,
+  ClockIcon,
   CpuChipIcon,
   ExclamationCircleIcon,
   PaperAirplaneIcon,
+  PlusIcon,
   SparklesIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
 import { classNames } from "@/lib/classNames";
 
 type ChatMessage = {
   id: string;
-  role: "assistant" | "user";
+  role: "assistant" | "user" | "tool";
   content: string;
   routes?: AgentRouteCitation[];
   state?: "ready" | "error";
@@ -29,10 +33,12 @@ type AgentRouteCitation = {
 };
 
 type AgentResponse = {
+  session_id?: string;
   answer?: string;
   detail?: string;
   message?: string;
-  used_tools?: string[];
+  used_tools?: Array<{ name: string; reason?: string }>;
+  suggested_follow_ups?: string[];
   confidence?: "low" | "medium" | "high";
 };
 
@@ -41,6 +47,22 @@ type AgentManifest = {
   configured?: boolean;
   provider?: string;
   model_id?: string;
+};
+
+type AgentChatSession = {
+  id: string;
+  title?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type AgentSessionDetail = AgentChatSession & {
+  messages?: Array<{
+    id: string;
+    role: ChatMessage["role"];
+    content: string;
+    created_at: string;
+  }>;
 };
 
 const examplePrompts = [
@@ -67,6 +89,9 @@ const allContextChips = [...contextChips, ...extraContextChips] as const;
 export default function SoterraAiPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+  const [sessions, setSessions] = useState<AgentChatSession[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
   const [selectedContext, setSelectedContext] = useState("All reports");
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
@@ -97,10 +122,88 @@ export default function SoterraAiPage() {
         }
       });
 
+    void loadSessions();
+
     return () => {
       active = false;
     };
   }, []);
+
+  async function loadSessions() {
+    setSessionsLoading(true);
+    try {
+      const response = await fetch("/api/agent-chat/sessions", { cache: "no-store" });
+      if (!response.ok) {
+        if (response.status !== 401) {
+          setManifestError("Chat history is unavailable.");
+        }
+        return;
+      }
+      const payload = (await response.json()) as { items?: AgentChatSession[] };
+      setSessions(payload.items ?? []);
+    } catch {
+      setManifestError("Chat history is unavailable.");
+    } finally {
+      setSessionsLoading(false);
+    }
+  }
+
+  async function openSession(sessionId: string) {
+    if (isThinking || sessionId === currentSessionId) return;
+    try {
+      const response = await fetch(`/api/agent-chat/sessions/${encodeURIComponent(sessionId)}`, {
+        cache: "no-store",
+      });
+      const payload = (await response.json().catch(() => null)) as AgentSessionDetail | null;
+      if (!response.ok || !payload) {
+        throw new Error(payload && "detail" in payload ? String(payload.detail) : "Chat session could not be loaded.");
+      }
+      setCurrentSessionId(payload.id);
+      setMessages(
+        (payload.messages ?? [])
+          .filter((message) => message.role === "user" || message.role === "assistant")
+          .map((message) => ({
+            id: message.id,
+            role: message.role,
+            content: message.content,
+            state: message.role === "assistant" ? "ready" : undefined,
+          }))
+      );
+    } catch (error) {
+      setMessages((current) => [
+        ...current,
+        {
+          id: nextMessageId(messageIdRef, "assistant"),
+          role: "assistant",
+          content:
+            error instanceof Error
+              ? error.message
+              : "Chat session could not be loaded.",
+          state: "error",
+        },
+      ]);
+    }
+  }
+
+  async function deleteSession(sessionId: string) {
+    if (isThinking) return;
+    const response = await fetch(`/api/agent-chat/sessions/${encodeURIComponent(sessionId)}`, {
+      method: "DELETE",
+    });
+    if (response.ok) {
+      if (sessionId === currentSessionId) {
+        startNewChat();
+      }
+      setSessions((current) => current.filter((session) => session.id !== sessionId));
+    }
+  }
+
+  function startNewChat() {
+    setCurrentSessionId(null);
+    setMessages([]);
+    setInput("");
+    textareaRef.current?.focus();
+  }
 
   function submitQuestion(question: string) {
     const trimmedQuestion = question.trim();
@@ -126,6 +229,7 @@ export default function SoterraAiPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: question,
+          session_id: currentSessionId,
           page_context: selectedContext,
         }),
       });
@@ -135,6 +239,9 @@ export default function SoterraAiPage() {
         throw new Error(payload?.answer || payload?.detail || payload?.message || "Soterra AI could not check the records.");
       }
 
+      if (payload?.session_id) {
+        setCurrentSessionId(payload.session_id);
+      }
       setMessages((current) => [
         ...current,
         {
@@ -146,6 +253,7 @@ export default function SoterraAiPage() {
           state: "ready",
         },
       ]);
+      void loadSessions();
     } catch (error) {
       setMessages((current) => [
         ...current,
@@ -171,7 +279,54 @@ export default function SoterraAiPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-6.5rem)] min-h-[620px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-gray-900 dark:shadow-none">
+    <div className="flex h-[calc(100vh-6.5rem)] min-h-[620px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-gray-900 dark:shadow-none">
+      <aside className="hidden w-72 shrink-0 border-r border-slate-200 bg-slate-50/70 dark:border-white/10 dark:bg-gray-950/50 lg:flex lg:flex-col">
+        <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 dark:border-white/10">
+          <div className="flex min-w-0 items-center gap-2">
+            <ChatBubbleLeftRightIcon className="size-4 shrink-0 text-indigo-600 dark:text-indigo-300" aria-hidden="true" />
+            <span className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+              Chat history
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={startNewChat}
+            disabled={isThinking}
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-indigo-200 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-gray-900 dark:text-slate-300 dark:hover:border-indigo-300/40 dark:hover:text-white"
+            title="New chat"
+          >
+            <PlusIcon className="size-4" aria-hidden="true" />
+            <span className="sr-only">New chat</span>
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-2">
+          {sessionsLoading ? (
+            <div className="flex items-center gap-2 px-2 py-3 text-xs text-slate-500 dark:text-slate-400">
+              <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" />
+              Loading chats
+            </div>
+          ) : sessions.length ? (
+            <div className="space-y-1">
+              {sessions.map((session) => (
+                <SessionButton
+                  key={session.id}
+                  session={session}
+                  selected={session.id === currentSessionId}
+                  disabled={isThinking}
+                  onOpen={() => openSession(session.id)}
+                  onDelete={() => deleteSession(session.id)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="px-2 py-3 text-xs/5 text-slate-500 dark:text-slate-400">
+              Your saved agent conversations will appear here.
+            </div>
+          )}
+        </div>
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col">
       <header className="flex items-center justify-between gap-4 border-b border-slate-200 px-4 py-3 dark:border-white/10 sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
           <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white dark:bg-indigo-500">
@@ -187,7 +342,17 @@ export default function SoterraAiPage() {
           </div>
         </div>
 
-        <div className="hidden items-center gap-2 text-xs/5 text-slate-500 sm:flex dark:text-slate-400">
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={startNewChat}
+            disabled={isThinking}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:text-slate-300 dark:hover:border-indigo-300/40 dark:hover:text-white lg:hidden"
+          >
+            <PlusIcon className="size-4" aria-hidden="true" />
+            New
+          </button>
+          <div className="hidden items-center gap-2 text-xs/5 text-slate-500 sm:flex dark:text-slate-400">
           {manifestError ? (
             <>
               <ExclamationCircleIcon className="size-4 text-rose-500" aria-hidden="true" />
@@ -199,6 +364,7 @@ export default function SoterraAiPage() {
               Ready
             </>
           )}
+          </div>
         </div>
       </header>
 
@@ -266,8 +432,70 @@ export default function SoterraAiPage() {
           ) : null}
         </section>
       </div>
+      </div>
     </div>
   );
+}
+
+function SessionButton({
+  session,
+  selected,
+  disabled,
+  onOpen,
+  onDelete,
+}: {
+  session: AgentChatSession;
+  selected: boolean;
+  disabled: boolean;
+  onOpen: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div
+      className={classNames(
+        "group flex items-start gap-1 rounded-lg border px-2 py-2 transition",
+        selected
+          ? "border-indigo-200 bg-white shadow-sm dark:border-indigo-300/30 dark:bg-gray-900"
+          : "border-transparent hover:border-slate-200 hover:bg-white dark:hover:border-white/10 dark:hover:bg-gray-900"
+      )}
+    >
+      <button
+        type="button"
+        onClick={onOpen}
+        disabled={disabled}
+        className="min-w-0 flex-1 text-left disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <span className="block truncate text-sm font-medium text-slate-800 dark:text-slate-100">
+          {session.title || "Untitled chat"}
+        </span>
+        <span className="mt-1 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+          <ClockIcon className="size-3.5" aria-hidden="true" />
+          {formatSessionDate(session.updated_at)}
+        </span>
+      </button>
+      <button
+        type="button"
+        onClick={onDelete}
+        disabled={disabled}
+        className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-slate-400 opacity-0 transition hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-30 group-hover:opacity-100 dark:hover:bg-rose-500/10 dark:hover:text-rose-200"
+        title="Delete chat"
+      >
+        <TrashIcon className="size-4" aria-hidden="true" />
+        <span className="sr-only">Delete chat</span>
+      </button>
+    </div>
+  );
+}
+
+function formatSessionDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Recently";
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
 }
 
 function EmptyState({
