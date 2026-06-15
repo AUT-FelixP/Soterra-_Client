@@ -779,7 +779,8 @@ function MessageBlock({ message }: { message: ChatMessage }) {
 type AnswerBlock =
   | { type: "paragraph"; text: string }
   | { type: "ordered-list"; items: string[] }
-  | { type: "table"; headers: string[]; rows: string[][] };
+  | { type: "table"; headers: string[]; rows: string[][] }
+  | { type: "issue-digest"; issues: IssueDisplay[]; summary: AnswerSummary };
 
 function AgentAnswer({ content }: { content: string }) {
   const blocks = parseAgentAnswer(content);
@@ -820,6 +821,10 @@ function AgentAnswer({ content }: { content: string }) {
               </ol>
             </div>
           );
+        }
+
+        if (block.type === "issue-digest") {
+          return <IssueDigest key={`issue-digest-${index}`} issues={block.issues} summary={block.summary} />;
         }
 
         return <AnswerTable key={`table-${index}`} block={block} summary={summary} />;
@@ -893,6 +898,7 @@ type IssueDisplay = {
   trade?: string;
   source?: string;
   action?: string;
+  evidence?: string;
 };
 
 function IssueDigest({
@@ -975,6 +981,7 @@ function IssueCard({
   trade,
   source,
   action,
+  evidence,
   compact = false,
 }: {
   priority?: string;
@@ -983,6 +990,7 @@ function IssueCard({
   trade?: string;
   source?: string;
   action?: string;
+  evidence?: string;
   compact?: boolean;
 }) {
   return (
@@ -1009,6 +1017,12 @@ function IssueCard({
         <span className="font-semibold">Recommended action: </span>
         {action || "Assign the responsible trade and upload close-out evidence."}
       </div>
+      {evidence ? (
+        <div className="mt-2 rounded-md border border-indigo-100 bg-indigo-50 px-3 py-2 text-sm/6 text-indigo-900 dark:border-indigo-300/10 dark:bg-indigo-400/10 dark:text-indigo-100">
+          <span className="font-semibold">Evidence required: </span>
+          {evidence}
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -1035,7 +1049,11 @@ function MetaItem({
 }
 
 function parseAgentAnswer(content: string): AnswerBlock[] {
-  const lines = content.split(/\r?\n/);
+  const normalizedContent = normalizeAgentMarkdown(content);
+  const actionPlan = parseIssueActionPlan(normalizedContent);
+  if (actionPlan.length) return actionPlan;
+
+  const lines = normalizedContent.split(/\r?\n/);
   const blocks: AnswerBlock[] = [];
   let paragraph: string[] = [];
   let index = 0;
@@ -1058,7 +1076,7 @@ function parseAgentAnswer(content: string): AnswerBlock[] {
 
     if (isMarkdownTableStart(lines, index)) {
       flushParagraph();
-      const headers = splitMarkdownRow(lines[index]);
+        const headers = splitMarkdownRow(lines[index]);
       index += 2;
       const rows: string[][] = [];
       while (index < lines.length && lines[index].trim().startsWith("|")) {
@@ -1074,18 +1092,102 @@ function parseAgentAnswer(content: string): AnswerBlock[] {
       flushParagraph();
       const items: string[] = [];
       while (index < lines.length && /^\d+\.\s+/.test(lines[index].trim())) {
-        items.push(lines[index].trim().replace(/^\d+\.\s+/, ""));
+        items.push(cleanInlineText(lines[index].trim().replace(/^\d+\.\s+/, "")));
         index += 1;
       }
       blocks.push({ type: "ordered-list", items });
       continue;
     }
 
-    paragraph.push(line);
+    paragraph.push(cleanInlineText(line));
     index += 1;
   }
 
   flushParagraph();
+  return blocks;
+}
+
+function normalizeAgentMarkdown(content: string) {
+  return content
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/^\s*[-*]\s+(Issue\s+\d+:)/gim, "$1")
+    .replace(/\s+([-*]\s+Issue\s+\d+:)/g, "\n$1")
+    .replace(/\s+(Issue\s+\d+:)/g, "\n$1")
+    .replace(/[ \t]+\n/g, "\n")
+    .trim();
+}
+
+function cleanInlineText(value: string) {
+  return value.replace(/\*\*([^*]+)\*\*/g, "$1").replace(/^\s*[-*]\s+/, "").trim();
+}
+
+function parseIssueActionPlan(content: string): AnswerBlock[] {
+  const lines = content.split(/\r?\n/).map((line) => cleanInlineText(line)).filter(Boolean);
+  if (!lines.some((line) => /^open issues:/i.test(line)) || !lines.some((line) => /^\d+\.\s+/.test(line))) {
+    return [];
+  }
+
+  const issues: IssueDisplay[] = [];
+  const intro: string[] = [];
+  let readiness: string | undefined;
+  let current: IssueDisplay | undefined;
+
+  for (const line of lines) {
+    const numbered = line.match(/^\d+\.\s+(.+)$/);
+    if (numbered) {
+      if (current) issues.push(current);
+      current = { issue: cleanInlineText(numbered[1]) };
+      continue;
+    }
+
+    const field = line.match(/^(Severity|Priority|Location|Responsible trade|Trade|Source|Fix|Recommended action|Evidence|Evidence required|Reinspection readiness):\s*(.*)$/i);
+    if (field) {
+      const label = field[1].toLowerCase();
+      const value = cleanInlineText(field[2]);
+      if (label === "reinspection readiness") {
+        readiness = value;
+      } else if (!current) {
+        intro.push(`${field[1]}: ${value}`);
+      } else if (label === "severity" || label === "priority") {
+        current.priority = value;
+      } else if (label === "location") {
+        current.location = value;
+      } else if (label === "responsible trade" || label === "trade") {
+        current.trade = value;
+      } else if (label === "source") {
+        current.source = value;
+      } else if (label === "fix" || label === "recommended action") {
+        current.action = value;
+      } else if (label === "evidence" || label === "evidence required") {
+        current.evidence = value;
+      }
+      continue;
+    }
+
+    if (!current) {
+      intro.push(line);
+    } else if (current.action) {
+      current.action = `${current.action} ${line}`;
+    } else {
+      current.action = line;
+    }
+  }
+
+  if (current) issues.push(current);
+  if (!issues.length) return [];
+
+  const firstText = intro.join(" ");
+  const summary: AnswerSummary = {
+    totalOpen: firstNumberMatch(firstText, /open issues:\s*(\d+)/i) ?? issues.length,
+    highPriority:
+      firstNumberMatch(firstText, /(\d+)\s+high/i) ??
+      issues.filter((issue) => /critical|high/i.test(String(issue.priority ?? ""))).length,
+  };
+
+  const blocks: AnswerBlock[] = [];
+  if (intro.length) blocks.push({ type: "paragraph", text: intro.join(" ") });
+  blocks.push({ type: "issue-digest", issues, summary });
+  if (readiness) blocks.push({ type: "paragraph", text: `Reinspection readiness: ${readiness}` });
   return blocks;
 }
 
@@ -1123,7 +1225,7 @@ function splitMarkdownRow(line: string) {
     .replace(/^\|/, "")
     .replace(/\|$/, "")
     .split("|")
-    .map((cell) => cell.trim());
+    .map((cell) => cleanInlineText(cell));
 }
 
 function isIssueTable(headers: string[]) {

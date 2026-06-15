@@ -20,6 +20,8 @@ type RepositoryItem = {
   size: number;
   status: "Ready" | "Encrypted" | "Processing";
   uploadedAt: string;
+  project?: string;
+  site?: string;
 };
 
 type ApiReport = {
@@ -125,7 +127,14 @@ export default function RepositoryPage() {
     return items.filter((item) => {
       if (filters.type !== "All" && item.type !== filters.type) return false;
       if (filters.status !== "All" && item.status !== filters.status) return false;
-      if (query && !item.name.toLowerCase().includes(query)) return false;
+      if (
+        query &&
+        ![item.name, item.project, item.site].some((value) =>
+          value?.toLowerCase().includes(query)
+        )
+      ) {
+        return false;
+      }
       return true;
     });
   }, [filters, items]);
@@ -248,7 +257,7 @@ export default function RepositoryPage() {
     setUploadError("");
 
     if (queuedFiles.length === 0) {
-      setUploadError("Choose at least one PDF report before uploading.");
+      setUploadError("Choose at least one PDF or Word report before uploading.");
       return;
     }
 
@@ -260,8 +269,8 @@ export default function RepositoryPage() {
     const nextSiteName = siteName.trim();
     const encrypted = form.get("encryptFiles") === "on";
     const zipContents = form.get("zipContents") === "on";
-    const extractableFiles = queuedFiles.filter(isPdfFile);
-    const repositoryOnlyFiles = queuedFiles.filter((file) => !isPdfFile(file));
+    const extractableFiles = queuedFiles.filter(isSupportedReportFile);
+    const repositoryOnlyFiles = queuedFiles.filter((file) => !isSupportedReportFile(file));
     const folderGroups = groupFilesByFolder(repositoryOnlyFiles);
     const looseFiles = repositoryOnlyFiles.filter((file) => !getRootFolder(file));
     const nextItems: RepositoryItem[] = [];
@@ -270,16 +279,18 @@ export default function RepositoryPage() {
     const uploadedReports: RepositoryItem[] = [];
     const uploadErrors: string[] = [];
 
-    for (const file of extractableFiles) {
+    if (extractableFiles.length > 0) {
       const reportForm = new FormData();
-      reportForm.append("file", file);
+      extractableFiles.forEach((file) => {
+        reportForm.append(extractableFiles.length === 1 ? "file" : "files", file);
+      });
       reportForm.append("project", nextProjectName);
       reportForm.append("site", nextSiteName);
       reportForm.append("status", "Reviewing");
       reportForm.append("trade", "General");
 
       try {
-        const response = await fetch("/api/reports", {
+        const response = await fetch(extractableFiles.length === 1 ? "/api/reports" : "/api/reports/bulk", {
           method: "POST",
           body: reportForm,
         });
@@ -289,24 +300,37 @@ export default function RepositoryPage() {
           throw new Error(getUploadErrorMessage(payload) ?? "Failed to upload report.");
         }
 
-        uploadedReports.push({
-          id:
-            typeof payload?.item?.id === "string" && payload.item.id.trim()
-              ? payload.item.id
-              : fileKey(file),
-          name: file.webkitRelativePath || file.name,
-          type: isZipFile(file) ? "Zip" : "Files",
-          itemCount: 1,
-          size: file.size,
-          status:
-            payload?.item?.status === "Completed" && !payload?.isProcessing
-              ? "Ready"
-              : "Processing",
-          uploadedAt: timestamp,
+        const results = Array.isArray(payload?.results)
+          ? payload.results
+          : [{ filename: extractableFiles[0]?.name, status: "accepted", item: payload?.item, isProcessing: payload?.isProcessing }];
+
+        results.forEach((result: { filename?: unknown; status?: unknown; error?: unknown; item?: { id?: unknown; status?: unknown }; isProcessing?: unknown }, index: number) => {
+          const sourceFile = extractableFiles[index];
+          if (result.status !== "accepted") {
+            uploadErrors.push(`${String(result.filename ?? sourceFile?.name ?? "Selected file")}: ${normalizeUploadError(String(result.error ?? "Failed to upload report."))}`);
+            return;
+          }
+          uploadedReports.push({
+            id:
+              typeof result.item?.id === "string" && result.item.id.trim()
+                ? result.item.id
+                : fileKey(sourceFile),
+            name: sourceFile?.webkitRelativePath || String(result.filename ?? sourceFile?.name ?? "Uploaded report"),
+            type: "Files",
+            itemCount: 1,
+            size: sourceFile?.size ?? 0,
+            status:
+              result.item?.status === "Completed" && !result.isProcessing
+                ? "Ready"
+                : "Processing",
+            uploadedAt: timestamp,
+            project: nextProjectName,
+            site: nextSiteName,
+          });
         });
       } catch (error) {
         uploadErrors.push(
-          `${file.name}: ${error instanceof Error ? error.message : "Failed to upload report."}`
+          error instanceof Error ? normalizeUploadError(error.message) : "Failed to upload report."
         );
       }
     }
@@ -320,6 +344,8 @@ export default function RepositoryPage() {
         size: looseFiles.reduce((total, file) => total + file.size, 0),
         status: encrypted ? "Encrypted" : "Ready",
         uploadedAt: timestamp,
+        project: nextProjectName,
+        site: nextSiteName,
       });
     }
 
@@ -332,6 +358,8 @@ export default function RepositoryPage() {
         size: files.reduce((total, file) => total + file.size, 0),
         status: encrypted ? "Encrypted" : "Ready",
         uploadedAt: timestamp,
+        project: nextProjectName,
+        site: nextSiteName,
       });
     });
 
@@ -352,14 +380,14 @@ export default function RepositoryPage() {
     if (uploadedReports.length > 0) {
       const repositoryOnlyMessage =
         repositoryOnlyFiles.length > 0
-          ? ` ${repositoryOnlyFiles.length} non-PDF repository file${repositoryOnlyFiles.length === 1 ? "" : "s"} listed locally until backend file storage is available.`
-          : "";
+            ? ` ${repositoryOnlyFiles.length} unsupported repository file${repositoryOnlyFiles.length === 1 ? "" : "s"} listed locally until backend file storage is available.`
+            : "";
       setUploadMessage(
-        `${uploadedReports.length} PDF report${uploadedReports.length === 1 ? "" : "s"} uploaded for extraction.${repositoryOnlyMessage}`
+        `${uploadedReports.length} report${uploadedReports.length === 1 ? "" : "s"} uploaded for extraction.${repositoryOnlyMessage}`
       );
     } else if (repositoryOnlyFiles.length > 0) {
       setUploadMessage(
-        `${repositoryOnlyFiles.length} repository file${repositoryOnlyFiles.length === 1 ? "" : "s"} listed locally. Extraction currently runs for PDF reports only.`
+        `${repositoryOnlyFiles.length} repository file${repositoryOnlyFiles.length === 1 ? "" : "s"} listed locally. Extraction currently runs for PDF and Word reports only.`
       );
     }
 
@@ -481,11 +509,11 @@ export default function RepositoryPage() {
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-slate-900/70 dark:shadow-none">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-white/10">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-slate-900/70 dark:shadow-none">
+        <table className="min-w-full table-fixed divide-y divide-gray-200 dark:divide-white/10">
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:bg-slate-950/80 dark:text-slate-400">
             <tr>
-              <th className="w-12 px-6 py-3">
+              <th className="w-10 px-4 py-3">
                 <input
                   type="checkbox"
                   aria-label="Select all visible repository items"
@@ -495,12 +523,14 @@ export default function RepositoryPage() {
                   className="size-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 disabled:opacity-40 dark:border-white/20 dark:bg-slate-950"
                 />
               </th>
-              <th className="px-6 py-3">Repository item</th>
-              <th className="px-6 py-3">Type</th>
-              <th className="px-6 py-3">Contents</th>
-              <th className="px-6 py-3">Status</th>
-              <th className="px-6 py-3">Uploaded</th>
-              <th className="px-6 py-3 text-right">Size</th>
+              <th className="w-[24%] px-4 py-3">Repository item</th>
+              <th className="w-[15%] px-4 py-3">Project</th>
+              <th className="w-[15%] px-4 py-3">Site</th>
+              <th className="w-[8%] px-4 py-3">Type</th>
+              <th className="w-[10%] px-4 py-3">Contents</th>
+              <th className="w-[10%] px-4 py-3">Status</th>
+              <th className="w-[12%] px-4 py-3">Uploaded</th>
+              <th className="w-[8%] px-4 py-3 text-right">Size</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white dark:divide-white/10 dark:bg-gray-900">
@@ -509,7 +539,7 @@ export default function RepositoryPage() {
                 key={item.id}
                 className="text-sm/6 text-slate-700 transition-colors even:bg-slate-50 hover:bg-slate-50 dark:text-slate-200 dark:even:bg-slate-950/25 dark:hover:bg-white/5"
               >
-                <td className="px-6 py-4">
+                <td className="px-4 py-4">
                   <input
                     type="checkbox"
                     aria-label={`Select ${item.name}`}
@@ -518,28 +548,34 @@ export default function RepositoryPage() {
                     className="size-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 dark:border-white/20 dark:bg-slate-950"
                   />
                 </td>
-                <td className="px-6 py-4 text-sm font-medium text-slate-900 dark:text-white">
+                <td className="break-words px-4 py-4 text-sm font-medium text-slate-900 dark:text-white">
                   {item.name}
                 </td>
-                <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">
+                <td className="break-words px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
+                  {displayMetadata(item.project)}
+                </td>
+                <td className="break-words px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
+                  {displayMetadata(item.site)}
+                </td>
+                <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
                   {item.type}
                 </td>
-                <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">
+                <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
                   {item.itemCount} item{item.itemCount === 1 ? "" : "s"}
                 </td>
-                <td className="px-6 py-4 text-sm">
+                <td className="px-4 py-4 text-sm">
                   <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-200">
                     {item.status}
                   </span>
                 </td>
-                <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">
+                <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
                   {new Date(item.uploadedAt).toLocaleDateString("en-US", {
                     month: "short",
                     day: "numeric",
                     year: "numeric",
                   })}
                 </td>
-                <td className="px-6 py-4 text-right text-sm font-medium text-slate-900 dark:text-white">
+                <td className="px-4 py-4 text-right text-sm font-medium text-slate-900 dark:text-white">
                   {formatBytes(item.size)}
                 </td>
               </tr>
@@ -572,7 +608,7 @@ export default function RepositoryPage() {
                     Upload inspection reports
                   </DialogTitle>
                   <p className="mt-1 text-sm/6 text-gray-400">
-                    Add PDF reports for a project or site. We&apos;ll organise them for analysis.
+                    Add PDF or Word reports for a project or site. We&apos;ll organise them for analysis.
                   </p>
                 </div>
                 <button
@@ -599,7 +635,7 @@ export default function RepositoryPage() {
                     className="rounded-xl border border-dashed border-white/15 bg-white/[0.03] px-4 py-5 text-center transition hover:border-indigo-400/60 hover:bg-white/[0.05]"
                   >
                     <p className="text-sm font-semibold text-white">
-                      Drop PDF reports here
+                      Drop PDF or Word reports here
                     </p>
                     <p className="mt-1 text-sm text-gray-400">
                       or choose files from your computer
@@ -628,7 +664,7 @@ export default function RepositoryPage() {
                       ref={fileInputRef}
                       type="file"
                       multiple
-                      accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.zip,application/zip,application/pdf,image/*"
+                      accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                       onChange={(event) => {
                         if (event.currentTarget.files) {
                           queueFiles(event.currentTarget.files);
@@ -659,6 +695,9 @@ export default function RepositoryPage() {
                         <h3 className="text-sm font-semibold text-white">Selected reports</h3>
                         <p className="mt-1 text-xs/5 text-gray-400">
                           {queuedFiles.length} report{queuedFiles.length === 1 ? "" : "s"} selected • {formatBytes(queuedSize)}
+                        </p>
+                        <p className="mt-1 text-xs/5 text-gray-400">
+                          PDF or Word only, max 50 MB per file.
                         </p>
                       </div>
                       <button
@@ -771,7 +810,7 @@ export default function RepositoryPage() {
                 <p className="text-sm text-gray-400">
                   {queuedFiles.length > 0
                     ? `${queuedFiles.length} report${queuedFiles.length === 1 ? "" : "s"} ready to upload`
-                    : "Choose PDF reports to continue"}
+                    : "Choose PDF or Word reports to continue"}
                 </p>
                 <div className="flex shrink-0 flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                   <button
@@ -813,8 +852,14 @@ function isZipFile(file: File) {
   return file.name.toLowerCase().endsWith(".zip") || file.type === "application/zip";
 }
 
-function isPdfFile(file: File) {
-  return file.name.toLowerCase().endsWith(".pdf") || file.type === "application/pdf";
+function isSupportedReportFile(file: File) {
+  const name = file.name.toLowerCase();
+  return (
+    name.endsWith(".pdf") ||
+    name.endsWith(".docx") ||
+    file.type === "application/pdf" ||
+    file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  );
 }
 
 function groupFilesByFolder(files: File[]) {
@@ -841,6 +886,17 @@ function formatBytes(value: number) {
   }
 
   return `${size.toFixed(size >= 10 ? 0 : 1)} ${units[unitIndex]}`;
+}
+
+function normalizeUploadError(message: string) {
+  if (message.includes("already been uploaded")) return "This file has already been uploaded.";
+  if (message.includes("PDF appears") || message.includes("Word document appears") || message.includes("corrupted")) {
+    return "The file appears to be corrupted or unreadable.";
+  }
+  if (message.includes("security scanning")) return "This file failed security scanning and cannot be uploaded.";
+  if (message.includes("Bulk upload is too large")) return "Bulk upload is too large. Upload fewer files or split the upload.";
+  if (message.includes("Only PDF and Word")) return "Only PDF and Word documents are supported.";
+  return message;
 }
 
 function isRepositoryItem(value: unknown): value is RepositoryItem {
@@ -886,6 +942,8 @@ function apiReportToRepositoryItem(report: NormalizedApiReport): RepositoryItem 
     size: 0,
     status: status === "Completed" || issues.length > 0 ? "Ready" : "Processing",
     uploadedAt,
+    project: stringValue(report.project),
+    site: stringValue(report.site),
   };
 }
 
@@ -896,6 +954,8 @@ function mergeBackendRepositoryItem(current: RepositoryItem, backendItem: Reposi
     ...backendItem,
     size: current.size,
     uploadedAt: backendItem.uploadedAt || current.uploadedAt,
+    project: backendItem.project || current.project,
+    site: backendItem.site || current.site,
   };
 }
 
@@ -925,4 +985,12 @@ function loadStoredRepositoryItems() {
     window.localStorage.removeItem(repositoryStorageKey);
     return [];
   }
+}
+
+function stringValue(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function displayMetadata(value: string | undefined) {
+  return value?.trim() || "Not specified";
 }

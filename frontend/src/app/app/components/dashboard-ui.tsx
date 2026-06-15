@@ -130,12 +130,17 @@ export function DashboardSubCard(props: {
 export function DashboardDataTable<T>(props: {
   columns: TableColumn<T>[];
   rows: T[];
+  emptyMessage?: string;
+  maxHeightClassName?: string;
+  stickyHeader?: boolean;
+  getRowKey?: (row: T, index: number) => string;
+  rowClassName?: (row: T, index: number) => string;
 }) {
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-white/10">
-      <div className="overflow-x-auto">
+      <div className={`overflow-auto ${props.maxHeightClassName ?? ""}`}>
         <table className="min-w-full divide-y divide-slate-200 dark:divide-white/10">
-          <thead className="bg-slate-50 dark:bg-slate-950/80">
+          <thead className={`${props.stickyHeader ? "sticky top-0 z-10" : ""} bg-slate-50 dark:bg-slate-950/80`}>
             <tr className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
               {props.columns.map((column) => (
                 <th
@@ -148,15 +153,27 @@ export function DashboardDataTable<T>(props: {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 bg-white dark:divide-white/10 dark:bg-slate-900/30">
-            {props.rows.map((row, index) => (
-              <tr key={index} className="text-sm/6 text-slate-700 transition-colors hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/5">
+            {props.rows.length ? props.rows.map((row, index) => (
+              <tr
+                key={props.getRowKey ? props.getRowKey(row, index) : index}
+                className={`text-sm/6 text-slate-700 transition-colors hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/5 ${props.rowClassName ? props.rowClassName(row, index) : ""}`}
+              >
                 {props.columns.map((column) => (
                   <td key={column.key} className={cellAlignment(column.align)}>
                     {column.render(row)}
                   </td>
                 ))}
               </tr>
-            ))}
+            )) : (
+              <tr>
+                <td
+                  colSpan={props.columns.length}
+                  className="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400"
+                >
+                  {props.emptyMessage ?? "No rows to show."}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

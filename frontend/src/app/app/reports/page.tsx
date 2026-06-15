@@ -41,6 +41,12 @@ type ApiReport = Partial<Report> & {
   issues?: Report["issues"] | null;
 };
 
+type UploadResultRow = {
+  filename: string;
+  status: "accepted" | "failed" | "processing";
+  message: string;
+};
+
 const statusOptions = ["All", "Reviewing", "In progress", "Completed"] as const;
 const repositoryStorageKey = "soterra-repository-items";
 const processingUploadMessage =
@@ -152,7 +158,8 @@ export default function ReportsPage() {
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [selectedReportIds, setSelectedReportIds] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [selectedFileName, setSelectedFileName] = useState<string>("");
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadRows, setUploadRows] = useState<UploadResultRow[]>([]);
   const [filters, setFilters] = useState({
     start: "",
     end: "",
@@ -322,12 +329,14 @@ export default function ReportsPage() {
 
     try {
       const formData = new FormData(form);
-      const file = formData.get("file");
-      if (!(file instanceof File) || file.size === 0) {
-        throw new Error("Please choose a PDF file to upload.");
+      const files = selectedFiles.filter((file) => file.size > 0);
+      if (files.length === 0) {
+        throw new Error("Please choose a PDF or Word document to upload.");
       }
+      formData.delete("file");
+      files.forEach((file) => formData.append(files.length === 1 ? "file" : "files", file));
 
-      const response = await fetch("/api/reports", {
+      const response = await fetch(files.length === 1 ? "/api/reports" : "/api/reports/bulk", {
         method: "POST",
         body: formData,
       });
@@ -344,8 +353,29 @@ export default function ReportsPage() {
       }
 
       const payload = await response.json();
+      if (Array.isArray(payload?.results)) {
+        const rows: UploadResultRow[] = payload.results.map((result: { filename?: unknown; status?: unknown; error?: unknown; isProcessing?: unknown }) => ({
+          filename: typeof result.filename === "string" ? result.filename : "Selected file",
+          status: result.status === "accepted" && result.isProcessing ? "processing" : result.status === "accepted" ? "accepted" : "failed",
+          message:
+            result.status === "accepted"
+              ? result.isProcessing
+                ? "Processing"
+                : "Uploaded"
+              : normalizeUploadError(typeof result.error === "string" ? result.error : "Failed to upload report."),
+        }));
+        setUploadRows(rows);
+        if (rows.some((row) => row.status !== "failed")) {
+          void loadReports({ silent: true });
+        }
+        form.reset();
+        setSelectedFiles([]);
+        setModalOpen(false);
+        setUploadMessage(`${rows.filter((row) => row.status !== "failed").length} file${rows.filter((row) => row.status !== "failed").length === 1 ? "" : "s"} accepted for upload.`);
+        return;
+      }
+
       const nextItem = payload?.item as ApiReport | undefined;
-      const isDuplicate = Boolean(payload?.isDuplicate);
       const isProcessing = Boolean(payload?.isProcessing);
 
       if (nextItem) {
@@ -359,18 +389,23 @@ export default function ReportsPage() {
       }
 
       form.reset();
-      setSelectedFileName("");
+      setSelectedFiles([]);
       setModalOpen(false);
         setUploadMessage(
-        isDuplicate
-          ? "That PDF was already uploaded, so the existing report was reused."
-          : isProcessing
+        isProcessing
             ? processingUploadMessage
             : "The file was uploaded and the report is ready."
       );
+      setUploadRows([
+        {
+          filename: files[0]?.name ?? "Selected file",
+          status: isProcessing ? "processing" : "accepted",
+          message: isProcessing ? "Processing" : "Uploaded",
+        },
+      ]);
     } catch (error) {
       setUploadError(
-        error instanceof Error ? error.message : "Failed to upload report."
+        error instanceof Error ? normalizeUploadError(error.message) : "Failed to upload report."
       );
     } finally {
       setSubmitting(false);
@@ -400,6 +435,19 @@ export default function ReportsPage() {
       {uploadMessage ? (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm/6 text-emerald-800 dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-200">
           {uploadMessage}
+        </div>
+      ) : null}
+
+      {uploadRows.length > 0 ? (
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white text-sm shadow-sm dark:border-white/10 dark:bg-slate-900/70">
+          {uploadRows.map((row) => (
+            <div key={`${row.filename}-${row.message}`} className="flex flex-col gap-1 border-b border-slate-200 px-4 py-3 last:border-b-0 sm:flex-row sm:items-center sm:justify-between dark:border-white/10">
+              <span className="font-medium text-slate-900 dark:text-white">{row.filename}</span>
+              <span className={row.status === "failed" ? "text-rose-700 dark:text-rose-200" : "text-emerald-700 dark:text-emerald-200"}>
+                {row.message}
+              </span>
+            </div>
+          ))}
         </div>
       ) : null}
 
@@ -627,7 +675,7 @@ export default function ReportsPage() {
               Upload report
             </DialogTitle>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Add a new inspection report and metadata for extraction.
+              Add inspection reports and metadata for extraction.
             </p>
             <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
               Fields marked as <span className={requiredBadgeClassName}>Required</span> must
@@ -658,22 +706,37 @@ export default function ReportsPage() {
                       Choose file
                     </button>
                     <span className="text-sm text-gray-500 dark:text-gray-400">
-                      {selectedFileName ? selectedFileName : "No file selected"}
+                      {selectedFiles.length > 0
+                        ? `${selectedFiles.length} file${selectedFiles.length === 1 ? "" : "s"} selected`
+                        : "No file selected"}
                     </span>
                   </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    PDF or Word only, max 50 MB per file.
+                  </p>
                   <input
                     ref={fileInputRef}
                     id="report-file"
                     type="file"
                     name="file"
                     required
-                    accept=".pdf,application/pdf"
+                    multiple
+                    accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     onChange={(event) => {
-                      const next = event.currentTarget.files?.[0]?.name ?? "";
-                      setSelectedFileName(next);
+                      setSelectedFiles(Array.from(event.currentTarget.files ?? []));
                     }}
                     className="sr-only"
                   />
+                  {selectedFiles.length > 0 ? (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5">
+                      {selectedFiles.map((file) => (
+                        <div key={`${file.name}-${file.size}-${file.lastModified}`} className="flex justify-between gap-3 border-b border-slate-200 px-3 py-2 text-xs last:border-b-0 dark:border-white/10">
+                          <span className="truncate text-slate-700 dark:text-slate-200">{file.name}</span>
+                          <span className="shrink-0 text-slate-500 dark:text-slate-400">{formatBytes(file.size)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </div>
               <div>
@@ -778,4 +841,28 @@ function removeRepositoryItemsFromStorage(reportIds: string[]) {
   } catch {
     window.localStorage.removeItem(repositoryStorageKey);
   }
+}
+
+function normalizeUploadError(message: string) {
+  if (message.includes("already been uploaded")) return "This file has already been uploaded.";
+  if (message.includes("PDF appears") || message.includes("Word document appears") || message.includes("corrupted")) {
+    return "The file appears to be corrupted or unreadable.";
+  }
+  if (message.includes("security scanning")) return "This file failed security scanning and cannot be uploaded.";
+  if (message.includes("too large")) return message;
+  if (message.includes("Bulk upload is too large")) return "Bulk upload is too large. Upload fewer files or split the upload.";
+  if (message.includes("Only PDF and Word")) return "Only PDF and Word documents are supported.";
+  return message;
+}
+
+function formatBytes(value: number) {
+  if (value < 1024) return `${value} B`;
+  const units = ["KB", "MB", "GB"];
+  let size = value / 1024;
+  let unitIndex = 0;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+  return `${size.toFixed(size >= 10 ? 0 : 1)} ${units[unitIndex]}`;
 }
