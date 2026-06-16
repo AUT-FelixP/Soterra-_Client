@@ -333,76 +333,79 @@ export default function ReportsPage() {
       if (files.length === 0) {
         throw new Error("Please choose a PDF or Word document to upload.");
       }
-      formData.delete("file");
-      files.forEach((file) => formData.append(files.length === 1 ? "file" : "files", file));
+      const baseFields = {
+        project: String(formData.get("project") ?? ""),
+        site: String(formData.get("site") ?? ""),
+        status: String(formData.get("status") ?? "Reviewing"),
+        inspector: String(formData.get("inspector") ?? ""),
+        trade: String(formData.get("trade") ?? "General"),
+      };
 
-      const response = await fetch(files.length === 1 ? "/api/reports" : "/api/reports/bulk", {
-        method: "POST",
-        body: formData,
-      });
+      const rows: UploadResultRow[] = [];
+      const acceptedReports: Report[] = [];
 
-      if (!response.ok) {
-        let errorMessage = "Failed to upload report.";
-        try {
-          const payload = (await response.json()) as unknown;
-          errorMessage = getUploadErrorMessage(payload) ?? errorMessage;
-        } catch {
-          // Fall back to the generic message when the backend response is not JSON.
+      for (const file of files) {
+        const singleFileForm = new FormData();
+        singleFileForm.append("file", file);
+        singleFileForm.append("project", baseFields.project);
+        singleFileForm.append("site", baseFields.site);
+        singleFileForm.append("status", baseFields.status);
+        singleFileForm.append("inspector", baseFields.inspector);
+        singleFileForm.append("trade", baseFields.trade);
+
+        const response = await fetch("/api/reports", {
+          method: "POST",
+          body: singleFileForm,
+        });
+
+        const payload = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          rows.push({
+            filename: file.name,
+            status: "failed",
+            message: normalizeUploadError(getUploadErrorMessage(payload) ?? "Failed to upload report."),
+          });
+          continue;
         }
-        throw new Error(errorMessage);
+
+        const nextItem = payload?.item as ApiReport | undefined;
+        const isProcessing = Boolean(payload?.isProcessing);
+        if (nextItem) {
+          acceptedReports.push(normalizeReport(nextItem, acceptedReports.length));
+        }
+        rows.push({
+          filename: file.name,
+          status: isProcessing ? "processing" : "accepted",
+          message: isProcessing ? "Processing" : "Uploaded",
+        });
       }
 
-      const payload = await response.json();
-      if (Array.isArray(payload?.results)) {
-        const rows: UploadResultRow[] = payload.results.map((result: { filename?: unknown; status?: unknown; error?: unknown; isProcessing?: unknown }) => ({
-          filename: typeof result.filename === "string" ? result.filename : "Selected file",
-          status: result.status === "accepted" && result.isProcessing ? "processing" : result.status === "accepted" ? "accepted" : "failed",
-          message:
-            result.status === "accepted"
-              ? result.isProcessing
-                ? "Processing"
-                : "Uploaded"
-              : normalizeUploadError(typeof result.error === "string" ? result.error : "Failed to upload report."),
-        }));
-        setUploadRows(rows);
-        if (rows.some((row) => row.status !== "failed")) {
-          void loadReports({ silent: true });
-        }
-        form.reset();
-        setSelectedFiles([]);
-        setModalOpen(false);
-        setUploadMessage(`${rows.filter((row) => row.status !== "failed").length} file${rows.filter((row) => row.status !== "failed").length === 1 ? "" : "s"} accepted for upload.`);
-        return;
-      }
-
-      const nextItem = payload?.item as ApiReport | undefined;
-      const isProcessing = Boolean(payload?.isProcessing);
-
-      if (nextItem) {
-        const normalizedItem = normalizeReport(nextItem, 0);
+      if (acceptedReports.length > 0) {
         setReports((prev) => {
-          const remaining = prev.filter((report) => report.id !== normalizedItem.id);
-          return [normalizedItem, ...remaining];
+          const acceptedIds = new Set(acceptedReports.map((report) => report.id));
+          const remaining = prev.filter((report) => !acceptedIds.has(report.id));
+          return [...acceptedReports, ...remaining];
         });
       } else {
         void loadReports({ silent: true });
       }
 
+      setUploadRows(rows);
+      const acceptedCount = rows.filter((row) => row.status !== "failed").length;
+      if (acceptedCount > 0) {
+        void loadReports({ silent: true });
+      }
+
+      if (acceptedCount === 0) {
+        throw new Error(rows.map((row) => `${row.filename}: ${row.message}`).join(" "));
+      }
+
       form.reset();
       setSelectedFiles([]);
       setModalOpen(false);
-        setUploadMessage(
-        isProcessing
-            ? processingUploadMessage
-            : "The file was uploaded and the report is ready."
-      );
-      setUploadRows([
-        {
-          filename: files[0]?.name ?? "Selected file",
-          status: isProcessing ? "processing" : "accepted",
-          message: isProcessing ? "Processing" : "Uploaded",
-        },
-      ]);
+      setUploadMessage(`${acceptedCount} file${acceptedCount === 1 ? "" : "s"} accepted for upload.`);
+      return;
     } catch (error) {
       setUploadError(
         error instanceof Error ? normalizeUploadError(error.message) : "Failed to upload report."
@@ -845,6 +848,9 @@ function removeRepositoryItemsFromStorage(reportIds: string[]) {
 
 function normalizeUploadError(message: string) {
   if (message.includes("already been uploaded")) return "This file has already been uploaded.";
+  if (message.includes("FUNCTION_PAYLOAD_TOO_LARGE") || message.includes("Request Entity Too Large")) {
+    return "This file is too large for the Vercel upload proxy. Upload a smaller file or use direct storage upload.";
+  }
   if (message.includes("PDF appears") || message.includes("Word document appears") || message.includes("corrupted")) {
     return "The file appears to be corrupted or unreadable.";
   }

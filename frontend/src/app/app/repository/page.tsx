@@ -60,7 +60,8 @@ function getUploadErrorMessage(payload: unknown) {
 }
 
 export default function RepositoryPage() {
-  const [items, setItems] = useState<RepositoryItem[]>(loadStoredRepositoryItems);
+  const [items, setItems] = useState<RepositoryItem[]>([]);
+  const [itemsHydrated, setItemsHydrated] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [queuedFiles, setQueuedFiles] = useState<File[]>([]);
@@ -79,10 +80,17 @@ export default function RepositoryPage() {
   const folderInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    window.localStorage.setItem(repositoryStorageKey, JSON.stringify(items));
-  }, [items]);
+    setItems(loadStoredRepositoryItems());
+    setItemsHydrated(true);
+  }, []);
 
   useEffect(() => {
+    if (!itemsHydrated) return;
+    window.localStorage.setItem(repositoryStorageKey, JSON.stringify(items));
+  }, [items, itemsHydrated]);
+
+  useEffect(() => {
+    if (!itemsHydrated) return;
     let cancelled = false;
 
     async function syncBackendReports() {
@@ -119,7 +127,7 @@ export default function RepositoryPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [itemsHydrated]);
 
   const filteredItems = useMemo(() => {
     const query = filters.search.trim().toLowerCase();
@@ -280,45 +288,40 @@ export default function RepositoryPage() {
     const uploadErrors: string[] = [];
 
     if (extractableFiles.length > 0) {
-      const reportForm = new FormData();
-      extractableFiles.forEach((file) => {
-        reportForm.append(extractableFiles.length === 1 ? "file" : "files", file);
-      });
-      reportForm.append("project", nextProjectName);
-      reportForm.append("site", nextSiteName);
-      reportForm.append("status", "Reviewing");
-      reportForm.append("trade", "General");
+      for (const sourceFile of extractableFiles) {
+        const reportForm = new FormData();
+        reportForm.append("file", sourceFile);
+        reportForm.append("project", nextProjectName);
+        reportForm.append("site", nextSiteName);
+        reportForm.append("status", "Reviewing");
+        reportForm.append("trade", "General");
 
-      try {
-        const response = await fetch(extractableFiles.length === 1 ? "/api/reports" : "/api/reports/bulk", {
-          method: "POST",
-          body: reportForm,
-        });
-        const payload = await response.json().catch(() => null);
+        try {
+          const response = await fetch("/api/reports", {
+            method: "POST",
+            body: reportForm,
+          });
+          const payload = await response.json().catch(() => null);
 
-        if (!response.ok) {
-          throw new Error(getUploadErrorMessage(payload) ?? "Failed to upload report.");
-        }
-
-        const results = Array.isArray(payload?.results)
-          ? payload.results
-          : [{ filename: extractableFiles[0]?.name, status: "accepted", item: payload?.item, isProcessing: payload?.isProcessing }];
-
-        results.forEach((result: { filename?: unknown; status?: unknown; error?: unknown; item?: { id?: unknown; status?: unknown }; isProcessing?: unknown }, index: number) => {
-          const sourceFile = extractableFiles[index];
-          if (result.status !== "accepted") {
-            uploadErrors.push(`${String(result.filename ?? sourceFile?.name ?? "Selected file")}: ${normalizeUploadError(String(result.error ?? "Failed to upload report."))}`);
-            return;
+          if (!response.ok) {
+            throw new Error(getUploadErrorMessage(payload) ?? "Failed to upload report.");
           }
+
+          const result = {
+            filename: sourceFile.name,
+            item: payload?.item as { id?: unknown; status?: unknown } | undefined,
+            isProcessing: payload?.isProcessing,
+          };
+
           uploadedReports.push({
             id:
               typeof result.item?.id === "string" && result.item.id.trim()
                 ? result.item.id
                 : fileKey(sourceFile),
-            name: sourceFile?.webkitRelativePath || String(result.filename ?? sourceFile?.name ?? "Uploaded report"),
+            name: sourceFile.webkitRelativePath || result.filename,
             type: "Files",
             itemCount: 1,
-            size: sourceFile?.size ?? 0,
+            size: sourceFile.size,
             status:
               result.item?.status === "Completed" && !result.isProcessing
                 ? "Ready"
@@ -327,11 +330,11 @@ export default function RepositoryPage() {
             project: nextProjectName,
             site: nextSiteName,
           });
-        });
-      } catch (error) {
-        uploadErrors.push(
-          error instanceof Error ? normalizeUploadError(error.message) : "Failed to upload report."
-        );
+        } catch (error) {
+          uploadErrors.push(
+            `${sourceFile.name}: ${error instanceof Error ? normalizeUploadError(error.message) : "Failed to upload report."}`
+          );
+        }
       }
     }
 
@@ -890,6 +893,9 @@ function formatBytes(value: number) {
 
 function normalizeUploadError(message: string) {
   if (message.includes("already been uploaded")) return "This file has already been uploaded.";
+  if (message.includes("FUNCTION_PAYLOAD_TOO_LARGE") || message.includes("Request Entity Too Large")) {
+    return "This file is too large for the Vercel upload proxy. Upload a smaller file or use direct storage upload.";
+  }
   if (message.includes("PDF appears") || message.includes("Word document appears") || message.includes("corrupted")) {
     return "The file appears to be corrupted or unreadable.";
   }
