@@ -139,7 +139,7 @@ export function DashboardDataTable<T>(props: {
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-white/10">
       <div className={`overflow-auto ${props.maxHeightClassName ?? ""}`}>
-        <table className="min-w-full divide-y divide-slate-200 dark:divide-white/10">
+        <table className="min-w-full table-fixed divide-y divide-slate-200 dark:divide-white/10">
           <thead className={`${props.stickyHeader ? "sticky top-0 z-10" : ""} bg-slate-50 dark:bg-slate-950/80`}>
             <tr className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
               {props.columns.map((column) => (
@@ -466,7 +466,7 @@ function headerAlignment(align: "left" | "right" | "center" = "left") {
 }
 
 function cellAlignment(align: "left" | "right" | "center" = "left") {
-  if (align === "right") return "px-4 py-3 text-right";
-  if (align === "center") return "px-4 py-3 text-center";
-  return "px-4 py-3 text-left";
+  if (align === "right") return "break-words px-4 py-3 text-right align-top";
+  if (align === "center") return "break-words px-4 py-3 text-center align-top";
+  return "break-words px-4 py-3 text-left align-top";
 }
