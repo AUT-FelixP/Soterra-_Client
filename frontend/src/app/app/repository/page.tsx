@@ -286,6 +286,18 @@ export default function RepositoryPage() {
 
     const uploadedReports: RepositoryItem[] = [];
     const uploadErrors: string[] = [];
+    const uploadCount = extractableFiles.length + repositoryOnlyFiles.length;
+
+    setModalOpen(false);
+    setQueuedFiles([]);
+    setProjectName("");
+    setSiteName("");
+    formElement.reset();
+    setUploadMessage(
+      uploadCount > 0
+        ? `Uploading ${uploadCount} file${uploadCount === 1 ? "" : "s"}...`
+        : ""
+    );
 
     if (extractableFiles.length > 0) {
       for (const sourceFile of extractableFiles) {
@@ -370,14 +382,6 @@ export default function RepositoryPage() {
 
     if (uploadErrors.length > 0) {
       setUploadError(uploadErrors.join(" "));
-    }
-
-    if (uploadedReports.length > 0 || repositoryOnlyFiles.length > 0) {
-      setQueuedFiles([]);
-      setProjectName("");
-      setSiteName("");
-      setModalOpen(false);
-      formElement.reset();
     }
 
     if (uploadedReports.length > 0) {

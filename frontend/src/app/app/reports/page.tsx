@@ -343,6 +343,17 @@ export default function ReportsPage() {
 
       const rows: UploadResultRow[] = [];
       const acceptedReports: Report[] = [];
+      const uploadingRows: UploadResultRow[] = files.map((file) => ({
+        filename: file.name,
+        status: "processing",
+        message: "Uploading",
+      }));
+
+      setUploadRows(uploadingRows);
+      setUploadMessage(`Uploading ${files.length} file${files.length === 1 ? "" : "s"}...`);
+      setModalOpen(false);
+      setSelectedFiles([]);
+      form.reset();
 
       for (const file of files) {
         const singleFileForm = new FormData();
@@ -401,9 +412,6 @@ export default function ReportsPage() {
         throw new Error(rows.map((row) => `${row.filename}: ${row.message}`).join(" "));
       }
 
-      form.reset();
-      setSelectedFiles([]);
-      setModalOpen(false);
       setUploadMessage(`${acceptedCount} file${acceptedCount === 1 ? "" : "s"} accepted for upload.`);
       return;
     } catch (error) {
