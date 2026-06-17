@@ -6,9 +6,7 @@ import { getExtractionFileState, type ExtractionFileState } from "@/lib/extracti
 import {
   DashboardBadge,
   DashboardBarChart,
-  DashboardButtonLink,
   DashboardDataTable,
-  DashboardHighlight,
   DashboardMetricGrid,
   DashboardPageIntro,
   DashboardSection,
@@ -89,26 +87,6 @@ export default function OverviewPage() {
       />
 
       <DashboardMetricGrid items={overviewMetrics} />
-
-      <DashboardHighlight
-        label="Live tracker"
-        action={<DashboardButtonLink href={data.liveTracker.href} label="Open tracker" />}
-      >
-        Open issues:{" "}
-        <strong className="text-rose-600 dark:text-rose-200">
-          {data.liveTracker.openIssues}
-        </strong>
-        {"  |  "}
-        Overdue:{" "}
-        <strong className="text-rose-600 dark:text-rose-200">
-          {data.liveTracker.overdue}
-        </strong>
-        {"  |  "}
-        Ready for inspection:{" "}
-        <strong className="text-emerald-600 dark:text-emerald-200">
-          {data.liveTracker.readyForInspection}
-        </strong>
-      </DashboardHighlight>
 
       <DashboardTwoColumn>
         <DashboardSection

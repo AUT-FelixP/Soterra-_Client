@@ -279,9 +279,9 @@ export default function SoterraAiPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-6.5rem)] min-h-[620px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-gray-900 dark:shadow-none">
-      <aside className="hidden w-72 shrink-0 border-r border-slate-200 bg-slate-50/70 dark:border-white/10 dark:bg-gray-950/50 lg:flex lg:flex-col">
-        <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 dark:border-white/10">
+    <div className="soterra-ai-panel flex h-[calc(100vh-6.5rem)] min-h-[620px] overflow-hidden rounded-xl border border-slate-200 bg-white/92 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#0b0b0c]/92 dark:shadow-none">
+      <aside className="hidden w-72 shrink-0 border-r border-slate-200 bg-slate-50/80 dark:border-white/10 dark:bg-[#060607]/88 lg:flex lg:flex-col">
+        <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 dark:border-white/10 dark:bg-[#080809]">
           <div className="flex min-w-0 items-center gap-2">
             <ChatBubbleLeftRightIcon className="size-4 shrink-0 text-indigo-600 dark:text-indigo-300" aria-hidden="true" />
             <span className="truncate text-sm font-semibold text-slate-900 dark:text-white">
@@ -292,7 +292,7 @@ export default function SoterraAiPage() {
             type="button"
             onClick={startNewChat}
             disabled={isThinking}
-            className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-indigo-200 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-gray-900 dark:text-slate-300 dark:hover:border-indigo-300/40 dark:hover:text-white"
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-indigo-200 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-[#111113] dark:text-slate-300 dark:hover:border-indigo-300/40 dark:hover:text-white"
             title="New chat"
           >
             <PlusIcon className="size-4" aria-hidden="true" />
@@ -327,13 +327,13 @@ export default function SoterraAiPage() {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-      <header className="flex items-center justify-between gap-4 border-b border-slate-200 px-4 py-3 dark:border-white/10 sm:px-5">
+      <header className="flex items-center justify-between gap-4 border-b border-slate-200 bg-white/70 px-4 py-3 dark:border-white/10 dark:bg-[#111113] sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
           <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white dark:bg-indigo-500">
-            <CpuChipIcon className="size-5" aria-hidden="true" />
+            <CpuChipIcon className="size-4" aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <h1 className="truncate text-sm/6 font-semibold text-slate-900 dark:text-white">
+            <h1 className="truncate text-xl/7 font-semibold tracking-tight text-slate-900 dark:text-white sm:text-2xl/8">
               Soterra Site Assistant
             </h1>
             <p className="truncate text-xs/5 text-slate-500 dark:text-slate-400">
@@ -369,7 +369,7 @@ export default function SoterraAiPage() {
       </header>
 
       {messages.length > 0 ? (
-        <div className="shrink-0 border-b border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-gray-900 sm:px-6">
+        <div className="shrink-0 border-b border-slate-200 bg-white/80 px-4 py-3 dark:border-white/10 dark:bg-[#0b0b0c] sm:px-6">
           <div className="mx-auto max-w-5xl">
             <ContextChips
               compact
@@ -386,7 +386,7 @@ export default function SoterraAiPage() {
       ) : null}
 
       <div className="min-h-0 flex-1 overflow-hidden">
-        <section className="flex h-full min-h-0 flex-col bg-white dark:bg-gray-900">
+        <section className="flex h-full min-h-0 flex-col bg-white/70 dark:bg-[#0b0b0c]">
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6">
             <div className="mx-auto flex min-h-full max-w-5xl flex-col">
               {messages.length === 0 ? (
@@ -416,7 +416,7 @@ export default function SoterraAiPage() {
           </div>
 
           {messages.length > 0 ? (
-            <div className="shrink-0 border-t border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-gray-900 sm:px-6">
+            <div className="shrink-0 border-t border-slate-200 bg-white/80 px-4 py-3 dark:border-white/10 dark:bg-[#0b0b0c] sm:px-6">
               <div className="mx-auto max-w-3xl">
                 <QuestionComposer
                   input={input}
@@ -455,8 +455,8 @@ function SessionButton({
       className={classNames(
         "group flex items-start gap-1 rounded-lg border px-2 py-2 transition",
         selected
-          ? "border-indigo-200 bg-white shadow-sm dark:border-indigo-300/30 dark:bg-gray-900"
-          : "border-transparent hover:border-slate-200 hover:bg-white dark:hover:border-white/10 dark:hover:bg-gray-900"
+          ? "border-indigo-200 bg-white shadow-sm dark:border-indigo-300/30 dark:bg-[#111113]"
+          : "border-transparent hover:border-slate-200 hover:bg-white dark:hover:border-white/10 dark:hover:bg-[#111113]"
       )}
     >
       <button
@@ -526,10 +526,10 @@ function EmptyState({
   return (
     <div className="flex flex-1 flex-col justify-start py-6 sm:justify-center sm:py-8">
       <div className="mx-auto max-w-2xl text-center">
-        <span className="inline-flex size-12 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm dark:bg-indigo-500">
-          <SparklesIcon className="size-6" aria-hidden="true" />
+        <span className="inline-flex size-11 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm dark:bg-indigo-500">
+          <SparklesIcon className="size-5" aria-hidden="true" />
         </span>
-        <h2 className="mt-5 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
+        <h2 className="mt-5 text-balance text-xl font-semibold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
           What would you like to check in your inspection reports?
         </h2>
         <p className="mt-3 text-sm/6 text-slate-600 dark:text-slate-300">
@@ -553,7 +553,7 @@ function EmptyState({
             type="button"
             disabled={disabled}
             onClick={() => onSelectPrompt(prompt)}
-            className="rounded-lg border border-slate-200 bg-transparent px-3.5 py-2 text-left text-sm/6 font-medium text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50/40 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:text-slate-300 dark:hover:border-indigo-300/30 dark:hover:bg-white/5 dark:hover:text-white"
+          className="rounded-lg border border-slate-200 bg-white/60 px-3.5 py-2 text-left text-sm/6 font-medium text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50/40 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-[#101012] dark:text-slate-300 dark:hover:border-indigo-300/30 dark:hover:bg-white/5 dark:hover:text-white"
           >
             {prompt}
           </button>
@@ -605,7 +605,7 @@ function ContextChips({
           Change filter
         </button>
         {menuOpen ? (
-          <div className="absolute top-10 left-0 z-10 w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-white/10 dark:bg-gray-950">
+          <div className="absolute top-10 left-0 z-10 w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-white/10 dark:bg-[#0b0b0c]">
             <div className="grid gap-1">
               {allContextChips.map((chip) => (
                 <button
@@ -704,7 +704,7 @@ function QuestionComposer({
 }) {
   return (
     <form onSubmit={onSubmit}>
-      <div className="rounded-xl border border-indigo-200 bg-white p-2 shadow-sm ring-1 ring-indigo-100 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-300/40 dark:border-indigo-300/30 dark:bg-gray-950 dark:shadow-none dark:ring-indigo-300/10 dark:focus-within:border-indigo-300/50 dark:focus-within:ring-indigo-400/25">
+      <div className="rounded-xl border border-indigo-200 bg-white p-2 shadow-sm ring-1 ring-indigo-100 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-300/40 dark:border-white/[0.12] dark:bg-[#050506] dark:shadow-none dark:ring-white/10 dark:focus-within:border-indigo-300/50 dark:focus-within:ring-indigo-400/25">
         <div className="flex items-end gap-2">
           <textarea
             ref={textareaRef}
@@ -794,7 +794,7 @@ function AgentAnswer({ content }: { content: string }) {
             <p
               key={`paragraph-${index}`}
               className={classNames(
-                "rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm/6 text-slate-700 shadow-sm dark:border-white/10 dark:bg-gray-950/50 dark:text-slate-100",
+                "rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm/6 text-slate-700 shadow-sm dark:border-white/10 dark:bg-[#101012] dark:text-slate-100",
                 index === 0 ? "text-[15px]/7 font-medium" : ""
               )}
             >
@@ -805,7 +805,7 @@ function AgentAnswer({ content }: { content: string }) {
 
         if (block.type === "ordered-list") {
           return (
-            <div key={`list-${index}`} className="rounded-lg border border-indigo-100 bg-white p-3 dark:border-indigo-300/20 dark:bg-gray-950/40">
+            <div key={`list-${index}`} className="rounded-lg border border-indigo-100 bg-white p-3 dark:border-white/10 dark:bg-[#101012]">
               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-indigo-700 dark:text-indigo-200">
                 Suggested fix order
               </p>
@@ -856,7 +856,7 @@ function AnswerTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-white/10 dark:bg-gray-950/40">
+    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-white/10 dark:bg-[#101012]">
       <table className="min-w-full border-collapse text-left text-xs/5">
         <thead className="bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-300">
           <tr>
@@ -914,7 +914,7 @@ function IssueDigest({
   const highCount = issues.filter((issue) => String(issue.priority ?? "").toLowerCase().includes("high")).length;
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-gray-950/50">
+    <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#101012]">
       <div className="flex flex-wrap gap-2">
         <SummaryPill label="Open" value={summary.totalOpen ?? issues.length} tone="slate" />
         <SummaryPill label="High priority" value={summary.highPriority ?? criticalCount + highCount} tone="amber" />
@@ -994,7 +994,7 @@ function IssueCard({
   compact?: boolean;
 }) {
   return (
-    <article className="rounded-lg border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-gray-900/60">
+    <article className="rounded-lg border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-[#101012]">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <h3 className="min-w-0 flex-1 text-[15px]/6 font-semibold text-slate-900 dark:text-white">
           {issue || "Open issue"}
@@ -1274,7 +1274,7 @@ function ThinkingBlock() {
   return (
     <div className="flex gap-3">
       <Avatar role="assistant" />
-      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm/6 text-slate-600 dark:border-white/10 dark:bg-gray-950 dark:text-slate-300">
+      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm/6 text-slate-600 dark:border-white/10 dark:bg-[#101012] dark:text-slate-300">
         <div className="flex items-center gap-2">
           <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" />
           Checking your inspection records...

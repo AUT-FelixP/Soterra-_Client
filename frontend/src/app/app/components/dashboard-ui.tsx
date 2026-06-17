@@ -1,6 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { useId } from "react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 export type DashboardMetric = {
   label: string;
@@ -185,50 +195,136 @@ export function DashboardBarChart(props: {
   data: Array<{ label: string; value: number; formattedValue?: string }>;
   colorClassName?: string;
 }) {
-  const maxValue = Math.max(...props.data.map((item) => item.value), 1);
-  const scaleLabels = [maxValue, Math.round(maxValue / 2), 0];
+  const gradientId = useId().replace(/:/g, "");
+  const chartData = props.data.map((item) => ({
+    ...item,
+    value: Number.isFinite(item.value) ? item.value : 0,
+    formattedValue: item.formattedValue ?? String(item.value),
+  }));
 
-  return (
-    <div className="rounded-xl border border-indigo-100 bg-gradient-to-b from-indigo-50/70 via-white to-white p-4 dark:border-indigo-400/15 dark:bg-slate-900/70 dark:bg-none">
-      <div className="rounded-xl border border-indigo-100/80 bg-white/90 px-3 py-3 dark:border-white/10 dark:bg-slate-800/90">
-        <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
-          <div className="flex h-40 flex-col justify-between pb-6 text-[11px] font-medium text-slate-400 dark:text-slate-500">
-            {scaleLabels.map((label, index) => (
-              <span key={`${label}-${index}`}>{label}</span>
-            ))}
-          </div>
-
-          <div className="relative">
-            <div className="pointer-events-none absolute inset-0 flex h-40 flex-col justify-between">
-              {scaleLabels.map((label, index) => (
-                <div
-                  key={`${label}-${index}`}
-                  className="border-t border-dashed border-indigo-100 dark:border-white/10"
-                />
-              ))}
-            </div>
-
-            <div className="relative flex h-40 items-end gap-3 pt-2">
-              {props.data.map((item) => (
-                <div key={item.label} className="flex flex-1 flex-col items-center justify-end">
-                  <div className="mb-2 text-[11px] font-semibold text-slate-500 dark:text-slate-300">
-                    {item.formattedValue ?? item.value}
-                  </div>
-                  <div className="flex h-28 w-full items-end justify-center">
-                    <div
-                      className={`w-full max-w-10 rounded-t-md bg-gradient-to-t shadow-sm ${props.colorClassName ?? "from-indigo-500 to-indigo-600 dark:from-indigo-400 dark:to-indigo-300"}`}
-                      style={{ height: `${Math.max((item.value / maxValue) * 100, 10)}%` }}
-                    />
-                  </div>
-                  <div className="mt-3 text-xs font-medium text-slate-500 dark:text-slate-400">
-                    {item.label}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+  if (!chartData.length) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0b0b0d]/86 dark:shadow-none">
+        <div className="flex h-[220px] items-center justify-center text-sm text-slate-500 dark:text-slate-400">
+          No trend data available
         </div>
       </div>
+    );
+  }
+
+  const latest = chartData.at(-1);
+  const previous = chartData.at(-2);
+  const delta =
+    latest && previous ? latest.value - previous.value : null;
+  const deltaLabel =
+    delta === null
+      ? "No previous period"
+      : `${delta > 0 ? "+" : ""}${delta} vs previous`;
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0b0b0d]/86 dark:shadow-none">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+            Monthly issues
+          </p>
+          <p className="mt-1 text-[1.85rem] font-semibold tracking-tight text-slate-950 dark:text-white">
+            {latest?.formattedValue ?? "0"}
+          </p>
+        </div>
+        <span
+          className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
+            delta !== null && delta <= 0
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-300/20 dark:bg-emerald-400/10 dark:text-emerald-200"
+              : "border-slate-200 bg-slate-50 text-slate-600 dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-300"
+          }`}
+        >
+          {deltaLabel}
+        </span>
+      </div>
+
+      <div className="h-[220px] min-w-0">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart
+            data={chartData}
+            margin={{ top: 8, right: 8, bottom: 4, left: -18 }}
+          >
+            <defs>
+              <linearGradient id={`${gradientId}-trend`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#8b7cf6" stopOpacity={0.42} />
+                <stop offset="58%" stopColor="#8b7cf6" stopOpacity={0.14} />
+                <stop offset="100%" stopColor="#8b7cf6" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid
+              strokeDasharray="3 3"
+              vertical={false}
+              stroke="rgba(148, 163, 184, 0.22)"
+            />
+            <XAxis
+              dataKey="label"
+              axisLine={false}
+              tickLine={false}
+              tickMargin={12}
+              minTickGap={18}
+              tick={{ fill: "#94a3b8", fontSize: 12, fontWeight: 600 }}
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              allowDecimals={false}
+              width={42}
+              tick={{ fill: "#94a3b8", fontSize: 12, fontWeight: 600 }}
+            />
+            <Tooltip
+              cursor={{
+                stroke: "#8b7cf6",
+                strokeWidth: 1,
+                strokeDasharray: "4 4",
+              }}
+              content={<DashboardChartTooltip />}
+            />
+            <Area
+              type="monotone"
+              dataKey="value"
+              stroke="#8b7cf6"
+              strokeWidth={2.6}
+              fill={`url(#${gradientId}-trend)`}
+              dot={false}
+              activeDot={{
+                r: 4,
+                fill: "#8b7cf6",
+                stroke: "#ffffff",
+                strokeWidth: 2,
+              }}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+function DashboardChartTooltip(props: {
+  active?: boolean;
+  label?: string;
+  payload?: Array<{
+    payload?: { formattedValue?: string; value?: number };
+    value?: number;
+  }>;
+}) {
+  if (!props.active || !props.payload?.length) {
+    return null;
+  }
+
+  const point = props.payload[0];
+  const value =
+    point.payload?.formattedValue ?? point.value ?? point.payload?.value ?? 0;
+
+  return (
+    <div className="rounded-lg border border-white/10 bg-[#08080a]/95 px-3 py-2 shadow-xl shadow-black/25">
+      <p className="text-xs font-semibold text-slate-400">{props.label}</p>
+      <p className="mt-1 text-sm font-semibold text-white">{value} issues</p>
     </div>
   );
 }

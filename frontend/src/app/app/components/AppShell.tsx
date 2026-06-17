@@ -25,6 +25,7 @@ import {
 import { classNames } from "@/lib/classNames";
 import { AUTH_STORAGE_KEY } from "@/lib/auth";
 import type { PublicAppSession } from "@/lib/auth";
+import AnimatedAppBackground from "./AnimatedAppBackground";
 
 const navigation = [
   { id: "overview", name: "Dashboard", href: "/app", icon: HomeIcon },
@@ -96,7 +97,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     .join("") || "SC";
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-gray-950 dark:text-white">
+    <div className="app-shell relative min-h-screen overflow-hidden bg-white text-slate-950 dark:bg-[#050505] dark:text-white">
+      <AnimatedAppBackground />
+
       <Dialog
         open={sidebarOpen}
         onClose={setSidebarOpen}
@@ -125,7 +128,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             </TransitionChild>
 
-            <div className="relative flex grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-2 dark:bg-gray-900 dark:before:pointer-events-none dark:before:absolute dark:before:inset-0 dark:before:border-r dark:before:border-white/10 dark:before:bg-black/10">
+            <div className="relative flex grow flex-col gap-y-5 overflow-y-auto border-r border-black/10 bg-white/70 px-6 pb-2 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-black/[0.78] dark:before:pointer-events-none dark:before:absolute dark:before:inset-0 dark:before:border-r dark:before:border-white/10 dark:before:bg-black/[0.18]">
               <div className="relative flex h-16 shrink-0 items-center">
                 <Link href="/app" className="flex items-center gap-3">
                   <span className="inline-flex size-8 items-center justify-center rounded-lg bg-indigo-600 text-sm font-semibold text-white shadow-sm dark:bg-indigo-500">
@@ -175,7 +178,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </Dialog>
 
       <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
-        <div className="relative flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-6 dark:border-white/10 dark:bg-gray-900 dark:before:pointer-events-none dark:before:absolute dark:before:inset-0 dark:before:bg-black/10">
+        <div className="relative flex grow flex-col gap-y-5 overflow-y-auto border-r border-black/10 bg-white/70 px-6 shadow-[0_0_70px_rgba(0,0,0,0.08)] backdrop-blur-2xl dark:border-white/10 dark:bg-black/75 dark:shadow-[0_0_80px_rgba(0,0,0,0.72)] dark:before:pointer-events-none dark:before:absolute dark:before:inset-0 dark:before:bg-black/[0.18]">
           <div className="relative flex h-16 shrink-0 items-center">
             <Link href="/app" className="flex items-center gap-3">
               <span className="inline-flex size-8 items-center justify-center rounded-lg bg-indigo-600 text-sm font-semibold text-white shadow-sm dark:bg-indigo-500">
@@ -222,8 +225,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      <div className="lg:pl-72">
-        <header className="sticky top-0 z-40 flex items-center gap-x-4 border-b border-gray-200 bg-white/95 px-4 py-2.5 shadow-sm backdrop-blur sm:px-6 lg:px-8 dark:border-white/10 dark:bg-gray-950/95 dark:shadow-none dark:before:pointer-events-none dark:before:absolute dark:before:inset-0 dark:before:border-b dark:before:border-white/10 dark:before:bg-black/10">
+      <div className="relative z-10 lg:pl-72">
+        <header className="sticky top-0 z-40 flex items-center gap-x-4 border-b border-black/10 bg-white/72 px-4 py-3 shadow-sm shadow-black/5 backdrop-blur-2xl sm:px-6 lg:px-8 dark:border-white/10 dark:bg-[#050505]/80 dark:shadow-none">
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
@@ -234,7 +237,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </button>
 
           <nav aria-label="Breadcrumb" className="flex flex-1 items-center overflow-x-auto">
-            <ol className="flex items-center space-x-2 text-sm/6 whitespace-nowrap">
+            <ol className="flex items-center gap-2 text-sm/6 whitespace-nowrap">
               <li className="flex items-center">
                 <Link
                   href="/app"
@@ -245,18 +248,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 </Link>
               </li>
               {breadcrumbs.map((page) => (
-                <li key={page.name} className="flex items-center">
-                  <svg
-                    viewBox="0 0 24 44"
-                    preserveAspectRatio="none"
-                    aria-hidden="true"
-                    className="h-4 w-3 shrink-0 text-gray-200 dark:text-white/10"
-                  >
-                    <path d="M.293 0l22 22-22 22h1.414l22-22-22-22H.293z" />
-                  </svg>
+                <li key={page.name} className="flex items-center gap-2">
+                  <span className="text-slate-300 dark:text-white/20" aria-hidden="true">
+                    /
+                  </span>
                   {page.current ? (
                     <span
-                      className="ml-2 font-semibold text-gray-900 dark:text-white"
+                      className="font-semibold text-gray-900 dark:text-white"
                       aria-current="page"
                     >
                       {page.name}
@@ -264,7 +262,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   ) : (
                     <Link
                       href={page.href}
-                      className="ml-2 rounded-md px-1.5 py-1 text-gray-500 transition hover:bg-gray-50 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-200"
+                      className="rounded-md px-1.5 py-1 text-gray-500 transition hover:bg-gray-50 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-200"
                     >
                       {page.name}
                     </Link>
@@ -286,7 +284,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </MenuButton>
             <MenuItems
               transition
-              className="absolute right-0 z-10 mt-3 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg outline outline-black/5 transition data-closed:scale-95 data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in dark:bg-gray-900 dark:shadow-none dark:outline-white/10"
+              className="absolute right-0 z-10 mt-3 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg outline outline-black/5 transition data-closed:scale-95 data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in dark:bg-[#0b0b0c] dark:shadow-none dark:outline-white/10"
             >
               <MenuItem>
                 <button
@@ -301,7 +299,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </Menu>
         </header>
 
-        <main className="px-4 py-6 sm:px-6 lg:px-8 lg:py-6">{children}</main>
+        <main className="relative px-4 py-6 sm:px-6 lg:px-8 lg:py-6">{children}</main>
       </div>
     </div>
   );

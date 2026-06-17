@@ -5,9 +5,7 @@ import { useEffect, useState } from "react";
 import type { DashboardProjectResponse } from "@/lib/dashboardAppData";
 import {
   DashboardBadge,
-  DashboardButtonLink,
   DashboardDataTable,
-  DashboardHighlight,
   DashboardMetricGrid,
   DashboardPageIntro,
   DashboardSection,
@@ -75,20 +73,6 @@ export default function ProjectPage({
       />
 
       <DashboardMetricGrid items={data.metrics} />
-
-      <DashboardHighlight
-        label="Live tracker - this project"
-        action={<DashboardButtonLink href={data.trackerSnapshot.href} label="Open tracker" />}
-      >
-        Open: <strong className="text-rose-200">{data.trackerSnapshot.open}</strong>
-        {"  ·  "}
-        Ready: <strong className="text-amber-200">{data.trackerSnapshot.ready}</strong>
-        {"  ·  "}
-        Closed (7d):{" "}
-        <strong className="text-emerald-200">
-          {data.trackerSnapshot.closedLast7Days}
-        </strong>
-      </DashboardHighlight>
 
       <DashboardSection title="Open items by type">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

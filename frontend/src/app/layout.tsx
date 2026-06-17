@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono, Sora } from "next/font/google";
+import { JetBrains_Mono, Poppins } from "next/font/google";
 import "./globals.css";
 
 const themeInitScript = `
@@ -13,9 +13,10 @@ const themeInitScript = `
 })();
 `;
 
-const sora = Sora({
-  variable: "--font-sora",
+const poppins = Poppins({
+  variable: "--font-poppins",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -46,7 +47,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body
-        className={`${sora.variable} ${jetBrainsMono.variable} h-full antialiased`}
+        className={`${poppins.variable} ${jetBrainsMono.variable} h-full antialiased`}
         suppressHydrationWarning
       >
         {children}
