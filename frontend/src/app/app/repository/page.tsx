@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Dialog,
   DialogBackdrop,
@@ -39,6 +39,10 @@ type NormalizedApiReport = ApiReport & { id: string };
 
 const typeOptions = ["All", "Files", "Folder", "Zip"] as const;
 const statusOptions = ["All", "Ready", "Encrypted", "Processing"] as const;
+const repositoryProcessingMessage =
+  "The file is uploaded and data extraction is in progress. Statuses will update automatically.";
+const repositoryCompleteMessage =
+  "Extraction complete. Repository statuses are up to date.";
 const modalInputClassName =
   "block w-full rounded-md bg-white/5 px-3 py-2 text-sm text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500";
 
@@ -67,6 +71,7 @@ export default function RepositoryPage() {
   const [queuedFiles, setQueuedFiles] = useState<File[]>([]);
   const [uploadMessage, setUploadMessage] = useState("");
   const [uploadError, setUploadError] = useState("");
+  const [awaitingExtractionUpdate, setAwaitingExtractionUpdate] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [projectName, setProjectName] = useState("");
@@ -89,45 +94,39 @@ export default function RepositoryPage() {
     window.localStorage.setItem(repositoryStorageKey, JSON.stringify(items));
   }, [items, itemsHydrated]);
 
+  const syncBackendReports = useCallback(async () => {
+    try {
+      const response = await fetch("/api/reports", { cache: "no-store" });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) return;
+
+      const backendReports = getApiReports(payload);
+      const backendReportIds = new Set(backendReports.map((report) => report.id));
+      const backendReportItems = backendReports.map(apiReportToRepositoryItem);
+
+      setItems((current) => {
+        const repositoryOnlyItems = current.filter((item) => !item.id.startsWith("rpt-"));
+        const localBackendItems = current.filter(
+          (item) => item.id.startsWith("rpt-") && backendReportIds.has(item.id)
+        );
+        const backendItemById = new Map(backendReportItems.map((item) => [item.id, item]));
+        const syncedBackendItems = localBackendItems.map((item) =>
+          mergeBackendRepositoryItem(item, backendItemById.get(item.id))
+        );
+        const syncedBackendIds = new Set(syncedBackendItems.map((item) => item.id));
+        const missingBackendItems = backendReportItems.filter((item) => !syncedBackendIds.has(item.id));
+
+        return [...missingBackendItems, ...syncedBackendItems, ...repositoryOnlyItems];
+      });
+    } catch {
+      // Keep the last local view if the backend is temporarily unavailable.
+    }
+  }, []);
+
   useEffect(() => {
     if (!itemsHydrated) return;
-    let cancelled = false;
-
-    async function syncBackendReports() {
-      try {
-        const response = await fetch("/api/reports", { cache: "no-store" });
-        const payload = await response.json().catch(() => null);
-        if (!response.ok || cancelled) return;
-
-        const backendReports = getApiReports(payload);
-        const backendReportIds = new Set(backendReports.map((report) => report.id));
-        const backendReportItems = backendReports.map(apiReportToRepositoryItem);
-
-        setItems((current) => {
-          const repositoryOnlyItems = current.filter((item) => !item.id.startsWith("rpt-"));
-          const localBackendItems = current.filter(
-            (item) => item.id.startsWith("rpt-") && backendReportIds.has(item.id)
-          );
-          const backendItemById = new Map(backendReportItems.map((item) => [item.id, item]));
-          const syncedBackendItems = localBackendItems.map((item) =>
-            mergeBackendRepositoryItem(item, backendItemById.get(item.id))
-          );
-          const syncedBackendIds = new Set(syncedBackendItems.map((item) => item.id));
-          const missingBackendItems = backendReportItems.filter((item) => !syncedBackendIds.has(item.id));
-
-          return [...missingBackendItems, ...syncedBackendItems, ...repositoryOnlyItems];
-        });
-      } catch {
-        // Keep the last local view if the backend is temporarily unavailable.
-      }
-    }
-
-    syncBackendReports();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [itemsHydrated]);
+    void syncBackendReports();
+  }, [itemsHydrated, syncBackendReports]);
 
   const filteredItems = useMemo(() => {
     const query = filters.search.trim().toLowerCase();
@@ -151,6 +150,7 @@ export default function RepositoryPage() {
     () => filteredItems.map((item) => item.id),
     [filteredItems]
   );
+  const hasProcessingItems = items.some((item) => item.status === "Processing");
   const selectedCount = selectedIds.length;
   const allFilteredSelected =
     filteredIds.length > 0 && filteredIds.every((id) => selectedIds.includes(id));
@@ -165,6 +165,23 @@ export default function RepositoryPage() {
       document.body.style.overflow = previousOverflow;
     };
   }, [modalOpen]);
+
+  useEffect(() => {
+    if (!itemsHydrated || !hasProcessingItems) return;
+
+    const interval = window.setInterval(() => {
+      void syncBackendReports();
+    }, 2500);
+
+    return () => window.clearInterval(interval);
+  }, [hasProcessingItems, itemsHydrated, syncBackendReports]);
+
+  useEffect(() => {
+    if (!awaitingExtractionUpdate || hasProcessingItems) return;
+
+    setAwaitingExtractionUpdate(false);
+    setUploadMessage(repositoryCompleteMessage);
+  }, [awaitingExtractionUpdate, hasProcessingItems]);
 
   function queueFiles(nextFiles: FileList | File[]) {
     const files = Array.from(nextFiles);
@@ -389,13 +406,22 @@ export default function RepositoryPage() {
         repositoryOnlyFiles.length > 0
             ? ` ${repositoryOnlyFiles.length} unsupported repository file${repositoryOnlyFiles.length === 1 ? "" : "s"} listed locally until backend file storage is available.`
             : "";
+      const hasProcessingUploads = uploadedReports.some((report) => report.status === "Processing");
+      setAwaitingExtractionUpdate(hasProcessingUploads);
       setUploadMessage(
-        `${uploadedReports.length} report${uploadedReports.length === 1 ? "" : "s"} uploaded for extraction.${repositoryOnlyMessage}`
+        hasProcessingUploads
+          ? `${repositoryProcessingMessage}${repositoryOnlyMessage}`
+          : `${uploadedReports.length} report${uploadedReports.length === 1 ? "" : "s"} uploaded and ready.${repositoryOnlyMessage}`
       );
+      void syncBackendReports();
     } else if (repositoryOnlyFiles.length > 0) {
+      setAwaitingExtractionUpdate(false);
       setUploadMessage(
         `${repositoryOnlyFiles.length} repository file${repositoryOnlyFiles.length === 1 ? "" : "s"} listed locally. Extraction currently runs for PDF and Word reports only.`
       );
+    } else if (uploadErrors.length > 0) {
+      setAwaitingExtractionUpdate(false);
+      setUploadMessage("");
     }
 
     setSubmitting(false);
@@ -924,7 +950,11 @@ function isRepositoryItem(value: unknown): value is RepositoryItem {
 }
 
 function getApiReports(payload: unknown): NormalizedApiReport[] {
-  const items = payload && typeof payload === "object" && "items" in payload ? payload.items : null;
+  const items = Array.isArray(payload)
+    ? payload
+    : payload && typeof payload === "object" && "items" in payload
+      ? payload.items
+      : null;
   if (!Array.isArray(items)) return [];
 
   return items.filter((item): item is NormalizedApiReport => {
