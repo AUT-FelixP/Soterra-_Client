@@ -101,7 +101,7 @@ export default function AnimatedAppBackground() {
           );
           const pointerBloom =
             pointer.active * Math.max(0, 1 - pointerDistance) * (isLight ? 0.12 : 0.16);
-          const alpha = edgeFade * wave * (isLight ? 0.24 : 0.19) + pointerBloom * edgeFade;
+          const alpha = edgeFade * wave * (isLight ? 0.24 : 0.27) + pointerBloom * edgeFade;
           canvasContext.fillStyle = isLight
             ? `rgba(10, 10, 12, ${alpha})`
             : `rgba(248, 250, 252, ${alpha})`;
@@ -132,8 +132,8 @@ export default function AnimatedAppBackground() {
         gradient.addColorStop(0.48, "rgba(10, 10, 12, 0.018)");
         gradient.addColorStop(1, "rgba(10, 10, 12, 0)");
       } else {
-        gradient.addColorStop(0, "rgba(255, 255, 255, 0.062)");
-        gradient.addColorStop(0.48, "rgba(255, 255, 255, 0.022)");
+        gradient.addColorStop(0, "rgba(255, 255, 255, 0.085)");
+        gradient.addColorStop(0.48, "rgba(255, 255, 255, 0.032)");
         gradient.addColorStop(1, "rgba(255, 255, 255, 0)");
       }
 

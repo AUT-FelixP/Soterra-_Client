@@ -76,10 +76,58 @@ export type DashboardPerformanceResponse = {
 export type DashboardInsightsResponse = {
   title: string;
   description: string;
-  filter: {
-    selected: string;
-    options: string[];
-  };
+    filter: {
+      selected: string;
+      options: string[];
+    };
+    hasReports?: boolean;
+    filters: {
+      projects: string[];
+      sites: string[];
+      inspectionTypes: string[];
+      trades: string[];
+      severities: string[];
+      statuses: string[];
+      dateRanges: string[];
+    };
+    selectedFilters: {
+      project: string;
+      site: string;
+      inspectionType: string;
+      trade: string;
+      severity: string;
+      status: string;
+      dateRange: string;
+    };
+    kpis: Array<{ key: string; label: string; value: number; suffix?: string }>;
+    visuals: Record<
+      "severityDonut" | "statusDonut" | "tradeBar" | "categoryBar" | "locationBar" | "issuesOverTime" | "projectComparison",
+      Array<{ name: string; value: number }>
+    >;
+    riskMatrix: Array<{
+      issue: string;
+      highestSeverity: "Low" | "Medium" | "High" | "Critical";
+      repeatCount: number;
+      openCount: number;
+      projectCount: number;
+      riskScore: number;
+      riskLevel: "Low" | "Medium" | "High" | "Critical";
+    }>;
+    issueDrilldown: Array<{
+      id: string; issue: string; summary?: string; project?: string; site?: string;
+      location?: string; inspectionType?: string; trade?: string; category?: string;
+      severity: "Low" | "Medium" | "High" | "Critical"; status: string;
+      requiredFix?: string; evidenceRequired: string[]; confidence?: number;
+      createdAt: string; reportId: string;
+    }>;
+    dataQuality: {
+      totalRows: number;
+      health: "Good" | "Needs review";
+      missingLocation: { count: number; percent: number };
+      missingTrade: { count: number; percent: number };
+      lowConfidence: { count: number; percent: number };
+      missingEvidence: { count: number; percent: number };
+    };
   rootCauses: string[];
   rootCauseItems?: InsightGroupItem[];
   highRiskAreas: string[];

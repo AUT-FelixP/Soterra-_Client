@@ -15,11 +15,12 @@ import {
 } from "@headlessui/react";
 import {
   Bars3Icon,
+  ChartBarSquareIcon,
+  CircleStackIcon,
   Cog6ToothIcon,
-  CpuChipIcon,
-  FolderOpenIcon,
   HomeIcon,
-  LightBulbIcon,
+  SparklesIcon,
+  Squares2X2Icon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { classNames } from "@/lib/classNames";
@@ -28,10 +29,10 @@ import type { PublicAppSession } from "@/lib/auth";
 import AnimatedAppBackground from "./AnimatedAppBackground";
 
 const navigation = [
-  { id: "overview", name: "Dashboard", href: "/app", icon: HomeIcon },
-  { id: "repository", name: "Repository", href: "/app/repository", icon: FolderOpenIcon },
-  { id: "soterra-ai", name: "Soterra AI", href: "/app/soterra-ai", icon: CpuChipIcon },
-  { id: "insights", name: "Insights", href: "/app/insights", icon: LightBulbIcon },
+  { id: "overview", name: "Dashboard", href: "/app", icon: Squares2X2Icon },
+  { id: "repository", name: "Repository", href: "/app/repository", icon: CircleStackIcon },
+  { id: "soterra-ai", name: "Soterra AI", href: "/app/soterra-ai", icon: SparklesIcon },
+  { id: "insights", name: "Insights", href: "/app/insights", icon: ChartBarSquareIcon },
   { id: "settings", name: "Settings", href: "/app/settings", icon: Cog6ToothIcon },
 ] as const;
 
@@ -131,10 +132,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <div className="relative flex grow flex-col gap-y-5 overflow-y-auto border-r border-black/10 bg-white/70 px-6 pb-2 shadow-2xl backdrop-blur-2xl dark:border-white/10 dark:bg-black/[0.78] dark:before:pointer-events-none dark:before:absolute dark:before:inset-0 dark:before:border-r dark:before:border-white/10 dark:before:bg-black/[0.18]">
               <div className="relative flex h-16 shrink-0 items-center">
                 <Link href="/app" className="flex items-center gap-3">
-                  <span className="inline-flex size-8 items-center justify-center rounded-lg bg-indigo-600 text-sm font-semibold text-white shadow-sm dark:bg-indigo-500">
+                  <span className="brand-mark size-9 rounded-xl text-sm font-semibold text-white">
                     S
                   </span>
-                  <span className="brand-glow text-base font-semibold text-gray-900 dark:text-white">
+                  <span className="text-base font-semibold tracking-tight text-gray-900 dark:text-white">
                     Soterra
                   </span>
                 </Link>
@@ -151,20 +152,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                           href={item.href}
                           className={classNames(
                             isActive
-                              ? "bg-gray-50 text-indigo-600 dark:bg-white/5 dark:text-white"
-                              : "text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white",
-                            "group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold transition-colors"
+                              ? "bg-slate-100 text-slate-950 ring-1 ring-slate-200 dark:bg-white/[0.055] dark:text-white dark:ring-white/[0.07]"
+                              : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-white/[0.035] dark:hover:text-white",
+                            "group flex items-center gap-x-3 rounded-lg px-2 py-1.5 text-sm/6 font-semibold transition-all"
                           )}
                         >
-                          <item.icon
-                            aria-hidden="true"
+                          <span
                             className={classNames(
                               isActive
-                                ? "text-indigo-600 dark:text-white"
-                                : "text-gray-400 group-hover:text-indigo-600 dark:text-gray-500 dark:group-hover:text-white",
-                              "size-6 shrink-0"
+                                ? "border-indigo-500/30 bg-indigo-500/12 text-indigo-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] dark:text-indigo-300"
+                                : "border-slate-200/80 bg-white/60 text-slate-400 group-hover:border-slate-300 group-hover:text-slate-700 dark:border-white/[0.065] dark:bg-white/[0.025] dark:text-slate-500 dark:group-hover:border-white/10 dark:group-hover:text-slate-300",
+                              "flex size-8 shrink-0 items-center justify-center rounded-lg border transition-colors"
                             )}
-                          />
+                          >
+                            <item.icon aria-hidden="true" strokeWidth={1.8} className="size-[18px]" />
+                          </span>
                           {item.name}
                         </Link>
                       </li>
@@ -181,10 +183,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="relative flex grow flex-col gap-y-5 overflow-y-auto border-r border-black/10 bg-white/70 px-6 shadow-[0_0_70px_rgba(0,0,0,0.08)] backdrop-blur-2xl dark:border-white/10 dark:bg-black/75 dark:shadow-[0_0_80px_rgba(0,0,0,0.72)] dark:before:pointer-events-none dark:before:absolute dark:before:inset-0 dark:before:bg-black/[0.18]">
           <div className="relative flex h-16 shrink-0 items-center">
             <Link href="/app" className="flex items-center gap-3">
-              <span className="inline-flex size-8 items-center justify-center rounded-lg bg-indigo-600 text-sm font-semibold text-white shadow-sm dark:bg-indigo-500">
+              <span className="brand-mark size-9 rounded-xl text-sm font-semibold text-white">
                 S
               </span>
-              <span className="brand-glow text-base font-semibold text-gray-900 dark:text-white">
+              <span className="text-base font-semibold tracking-tight text-gray-900 dark:text-white">
                 Soterra
               </span>
             </Link>
@@ -201,20 +203,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       href={item.href}
                       className={classNames(
                         isActive
-                          ? "bg-gray-50 text-indigo-600 dark:bg-white/5 dark:text-white"
-                          : "text-gray-700 hover:bg-gray-50 hover:text-indigo-600 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white",
-                        "group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold transition-colors"
+                          ? "bg-slate-100 text-slate-950 ring-1 ring-slate-200 dark:bg-white/[0.055] dark:text-white dark:ring-white/[0.07]"
+                          : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-white/[0.035] dark:hover:text-white",
+                        "group flex items-center gap-x-3 rounded-lg px-2 py-1.5 text-sm/6 font-semibold transition-all"
                       )}
                     >
-                      <item.icon
-                        aria-hidden="true"
+                      <span
                         className={classNames(
                           isActive
-                            ? "text-indigo-600 dark:text-white"
-                            : "text-gray-400 group-hover:text-indigo-600 dark:text-gray-500 dark:group-hover:text-white",
-                          "size-6 shrink-0"
+                            ? "border-indigo-500/30 bg-indigo-500/12 text-indigo-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] dark:text-indigo-300"
+                            : "border-slate-200/80 bg-white/60 text-slate-400 group-hover:border-slate-300 group-hover:text-slate-700 dark:border-white/[0.065] dark:bg-white/[0.025] dark:text-slate-500 dark:group-hover:border-white/10 dark:group-hover:text-slate-300",
+                          "flex size-8 shrink-0 items-center justify-center rounded-lg border transition-colors"
                         )}
-                      />
+                      >
+                        <item.icon aria-hidden="true" strokeWidth={1.8} className="size-[18px]" />
+                      </span>
                       {item.name}
                     </Link>
                   </li>

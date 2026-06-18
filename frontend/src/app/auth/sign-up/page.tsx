@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AUTH_STORAGE_KEY } from "@/lib/auth";
+import AnimatedAppBackground from "../../app/components/AnimatedAppBackground";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -47,122 +48,79 @@ export default function SignUpPage() {
     }
   }
 
+  const inputClassName =
+    "block w-full rounded-lg bg-white px-3.5 py-2 text-base text-slate-950 outline-1 -outline-offset-1 outline-slate-300 transition focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/[0.055] dark:text-white dark:outline-white/10 dark:focus:bg-white/[0.075] dark:focus:outline-indigo-400";
+  const labelClassName = "block text-sm/6 font-medium text-slate-700 dark:text-slate-200";
+
   return (
-    <div className="flex min-h-full flex-col justify-center px-6 py-12 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-sm">
-        <div className="flex justify-center">
-          <span className="brand-glow text-center text-2xl font-semibold text-gray-900 dark:text-white">
-            Soterra
-          </span>
-        </div>
-        <h2 className="mt-10 text-center text-2xl/9 font-bold tracking-tight text-gray-900 dark:text-white">
-          Create your account
-        </h2>
-      </div>
-
-      <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label
-              htmlFor="tenantName"
-              className="block text-sm/6 font-medium text-gray-900 dark:text-gray-100"
-            >
-              Company name
-            </label>
-            <div className="mt-2">
-              <input
-                id="tenantName"
-                name="tenantName"
-                type="text"
-                required
-                autoComplete="organization"
-                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500"
-              />
-            </div>
+    <div className="relative min-h-full overflow-hidden bg-white text-slate-950 dark:bg-[#050505] dark:text-white">
+      <AnimatedAppBackground />
+      <main className="relative z-10 flex min-h-full items-center justify-center px-6 py-8 lg:px-8">
+        <section className="w-full max-w-md rounded-2xl border border-slate-200/80 bg-white/90 p-7 shadow-2xl shadow-slate-950/10 backdrop-blur-xl sm:p-8 dark:border-white/10 dark:bg-[#0b0b0d]/88 dark:shadow-black/35">
+          <div className="flex items-center justify-center gap-3">
+            <span className="brand-mark size-10 rounded-xl text-base font-semibold text-white">S</span>
+            <span className="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
+              Soterra
+            </span>
+          </div>
+          <div className="mt-6 text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-indigo-600 dark:text-indigo-300">
+              Get started
+            </p>
+            <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-950 dark:text-white">
+              Create your account
+            </h1>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+              Set up your inspection workspace in a minute.
+            </p>
           </div>
 
-          <div>
-            <label
-              htmlFor="name"
-              className="block text-sm/6 font-medium text-gray-900 dark:text-gray-100"
-            >
-              Full name
-            </label>
-            <div className="mt-2">
-              <input
-                id="name"
-                name="name"
-                type="text"
-                required
-                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500"
-              />
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            <div>
+              <label htmlFor="tenantName" className={labelClassName}>Company name</label>
+              <div className="mt-1.5">
+                <input id="tenantName" name="tenantName" type="text" required autoComplete="organization" className={inputClassName} />
+              </div>
             </div>
-          </div>
-
-          <div>
-            <label
-              htmlFor="email"
-              className="block text-sm/6 font-medium text-gray-900 dark:text-gray-100"
-            >
-              Email address
-            </label>
-            <div className="mt-2">
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                autoComplete="email"
-                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500"
-              />
+            <div>
+              <label htmlFor="name" className={labelClassName}>Full name</label>
+              <div className="mt-1.5">
+                <input id="name" name="name" type="text" required autoComplete="name" className={inputClassName} />
+              </div>
             </div>
-          </div>
-
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-sm/6 font-medium text-gray-900 dark:text-gray-100"
-            >
-              Password
-            </label>
-            <div className="mt-2">
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                minLength={12}
-                autoComplete="new-password"
-                className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6 dark:bg-white/5 dark:text-white dark:outline-white/10 dark:placeholder:text-gray-500 dark:focus:outline-indigo-500"
-              />
+            <div>
+              <label htmlFor="email" className={labelClassName}>Email address</label>
+              <div className="mt-1.5">
+                <input id="email" name="email" type="email" required autoComplete="email" className={inputClassName} />
+              </div>
             </div>
-          </div>
+            <div>
+              <label htmlFor="password" className={labelClassName}>Password</label>
+              <div className="mt-1.5">
+                <input id="password" name="password" type="password" required minLength={12} autoComplete="new-password" className={inputClassName} />
+              </div>
+              <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">Use at least 12 characters.</p>
+            </div>
 
-          {error ? (
-            <p className="text-sm text-rose-600 dark:text-rose-300">{error}</p>
-          ) : null}
+            {error ? <p className="text-sm text-rose-600 dark:text-rose-300">{error}</p> : null}
 
-          <div>
             <button
               type="submit"
               disabled={submitting}
-              className="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm/6 font-semibold text-white shadow-xs hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-70 dark:bg-indigo-500 dark:shadow-none dark:hover:bg-indigo-400 dark:focus-visible:outline-indigo-500"
+              className="flex w-full justify-center rounded-lg bg-indigo-600 px-3 py-2.5 text-sm/6 font-semibold text-white shadow-lg shadow-indigo-600/15 transition hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-indigo-500 dark:hover:bg-indigo-400"
             >
-              {submitting ? "Creating account..." : "Sign up"}
+              {submitting ? "Creating account..." : "Create account"}
             </button>
-          </div>
-        </form>
+          </form>
 
-        <p className="mt-10 text-center text-sm/6 text-gray-500 dark:text-gray-400">
-          Already have an account?{" "}
-          <Link
-            href="/auth/sign-in"
-            className="font-semibold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
-          >
-            Sign in
-          </Link>
-        </p>
-      </div>
+          <p className="mt-6 text-center text-sm/6 text-slate-500 dark:text-slate-400">
+            Already have an account?{" "}
+            <Link href="/auth/sign-in" className="font-semibold text-indigo-600 transition hover:text-indigo-500 dark:text-indigo-300 dark:hover:text-indigo-200">
+              Sign in
+            </Link>
+          </p>
+        </section>
+      </main>
     </div>
   );
 }

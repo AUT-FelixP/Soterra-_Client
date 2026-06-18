@@ -279,27 +279,27 @@ export default function SoterraAiPage() {
   }
 
   return (
-    <div className="soterra-ai-panel flex h-[calc(100vh-6.5rem)] min-h-[620px] overflow-hidden rounded-xl border border-slate-200 bg-white/92 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#0b0b0c]/92 dark:shadow-none">
-      <aside className="hidden w-72 shrink-0 border-r border-slate-200 bg-slate-50/80 dark:border-white/10 dark:bg-[#060607]/88 lg:flex lg:flex-col">
-        <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 dark:border-white/10 dark:bg-[#080809]">
+    <div className="soterra-ai-panel flex h-[calc(100vh-6.5rem)] min-h-[620px] overflow-hidden rounded-2xl border border-black/10 bg-white/55 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur-2xl dark:border-white/[0.09] dark:bg-black/45 dark:shadow-[0_24px_90px_rgba(0,0,0,0.38)]">
+      <aside className="hidden w-64 shrink-0 border-r border-black/10 bg-white/36 dark:border-white/[0.08] dark:bg-black/25 lg:flex lg:flex-col">
+        <div className="flex h-16 items-center justify-between gap-2 border-b border-black/10 px-4 dark:border-white/[0.08]">
           <div className="flex min-w-0 items-center gap-2">
             <ChatBubbleLeftRightIcon className="size-4 shrink-0 text-indigo-600 dark:text-indigo-300" aria-hidden="true" />
             <span className="truncate text-sm font-semibold text-slate-900 dark:text-white">
-              Chat history
+              Chats
             </span>
           </div>
           <button
             type="button"
             onClick={startNewChat}
             disabled={isThinking}
-            className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-indigo-200 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-[#111113] dark:text-slate-300 dark:hover:border-indigo-300/40 dark:hover:text-white"
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-black/10 bg-white/50 text-slate-500 transition hover:bg-white hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400 dark:hover:bg-white/[0.08] dark:hover:text-white"
             title="New chat"
           >
             <PlusIcon className="size-4" aria-hidden="true" />
             <span className="sr-only">New chat</span>
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-2">
+        <div className="min-h-0 flex-1 overflow-y-auto p-2.5">
           {sessionsLoading ? (
             <div className="flex items-center gap-2 px-2 py-3 text-xs text-slate-500 dark:text-slate-400">
               <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" />
@@ -319,26 +319,24 @@ export default function SoterraAiPage() {
               ))}
             </div>
           ) : (
-            <div className="px-2 py-3 text-xs/5 text-slate-500 dark:text-slate-400">
-              Your saved agent conversations will appear here.
+            <div className="px-2 py-3 text-xs/5 text-slate-500 dark:text-slate-500">
+              No chats yet
             </div>
           )}
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-      <header className="flex items-center justify-between gap-4 border-b border-slate-200 bg-white/70 px-4 py-3 dark:border-white/10 dark:bg-[#111113] sm:px-5">
+      <header className="flex h-16 items-center justify-between gap-4 border-b border-black/10 bg-white/20 px-4 dark:border-white/[0.08] dark:bg-black/10 sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white dark:bg-indigo-500">
+          <span className="brand-mark inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-white">
             <CpuChipIcon className="size-4" aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <h1 className="truncate text-xl/7 font-semibold tracking-tight text-slate-900 dark:text-white sm:text-2xl/8">
-              Soterra Site Assistant
+            <h1 className="truncate text-base/6 font-semibold tracking-tight text-slate-900 dark:text-white">
+              Soterra AI
             </h1>
-            <p className="truncate text-xs/5 text-slate-500 dark:text-slate-400">
-              Find failed items, evidence gaps, and next steps
-            </p>
+            <p className="truncate text-[11px]/4 text-slate-500 dark:text-slate-500">Inspection assistant</p>
           </div>
         </div>
 
@@ -356,7 +354,7 @@ export default function SoterraAiPage() {
           {manifestError ? (
             <>
               <ExclamationCircleIcon className="size-4 text-rose-500" aria-hidden="true" />
-              Not ready
+              Offline
             </>
           ) : (
             <>
@@ -369,7 +367,7 @@ export default function SoterraAiPage() {
       </header>
 
       {messages.length > 0 ? (
-        <div className="shrink-0 border-b border-slate-200 bg-white/80 px-4 py-3 dark:border-white/10 dark:bg-[#0b0b0c] sm:px-6">
+        <div className="shrink-0 border-b border-black/10 bg-white/15 px-4 py-2.5 dark:border-white/[0.08] dark:bg-black/10 sm:px-6">
           <div className="mx-auto max-w-5xl">
             <ContextChips
               compact
@@ -386,9 +384,9 @@ export default function SoterraAiPage() {
       ) : null}
 
       <div className="min-h-0 flex-1 overflow-hidden">
-        <section className="flex h-full min-h-0 flex-col bg-white/70 dark:bg-[#0b0b0c]">
+        <section className="flex h-full min-h-0 flex-col bg-white/10 dark:bg-black/5">
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6">
-            <div className="mx-auto flex min-h-full max-w-5xl flex-col">
+            <div className="mx-auto flex min-h-full max-w-4xl flex-col">
               {messages.length === 0 ? (
                 <EmptyState
                   input={input}
@@ -416,7 +414,7 @@ export default function SoterraAiPage() {
           </div>
 
           {messages.length > 0 ? (
-            <div className="shrink-0 border-t border-slate-200 bg-white/80 px-4 py-3 dark:border-white/10 dark:bg-[#0b0b0c] sm:px-6">
+            <div className="shrink-0 bg-gradient-to-t from-white/65 via-white/45 to-transparent px-4 pb-4 pt-8 dark:from-black/55 dark:via-black/30 sm:px-6">
               <div className="mx-auto max-w-3xl">
                 <QuestionComposer
                   input={input}
@@ -426,7 +424,6 @@ export default function SoterraAiPage() {
                   onSubmit={handleSubmit}
                   onSubmitQuestion={submitQuestion}
                 />
-                <HelperText compact />
               </div>
             </div>
           ) : null}
@@ -453,10 +450,10 @@ function SessionButton({
   return (
     <div
       className={classNames(
-        "group flex items-start gap-1 rounded-lg border px-2 py-2 transition",
+        "group flex items-start gap-1 rounded-xl border px-2.5 py-2.5 transition",
         selected
-          ? "border-indigo-200 bg-white shadow-sm dark:border-indigo-300/30 dark:bg-[#111113]"
-          : "border-transparent hover:border-slate-200 hover:bg-white dark:hover:border-white/10 dark:hover:bg-[#111113]"
+          ? "border-indigo-200/80 bg-indigo-50/70 dark:border-indigo-300/20 dark:bg-indigo-400/[0.09]"
+          : "border-transparent hover:border-black/5 hover:bg-white/50 dark:hover:border-white/[0.06] dark:hover:bg-white/[0.035]"
       )}
     >
       <button
@@ -465,10 +462,10 @@ function SessionButton({
         disabled={disabled}
         className="min-w-0 flex-1 text-left disabled:cursor-not-allowed disabled:opacity-50"
       >
-        <span className="block truncate text-sm font-medium text-slate-800 dark:text-slate-100">
+        <span className="block truncate text-[13px]/5 font-medium text-slate-800 dark:text-slate-200">
           {session.title || "Untitled chat"}
         </span>
-        <span className="mt-1 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+        <span className="mt-0.5 flex items-center gap-1 text-[11px]/4 text-slate-500 dark:text-slate-500">
           <ClockIcon className="size-3.5" aria-hidden="true" />
           {formatSessionDate(session.updated_at)}
         </span>
@@ -524,20 +521,17 @@ function EmptyState({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   return (
-    <div className="flex flex-1 flex-col justify-start py-6 sm:justify-center sm:py-8">
-      <div className="mx-auto max-w-2xl text-center">
-        <span className="inline-flex size-11 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm dark:bg-indigo-500">
-          <SparklesIcon className="size-5" aria-hidden="true" />
+    <div className="flex flex-1 flex-col justify-start py-8 sm:justify-center sm:py-10">
+      <div className="mx-auto max-w-xl text-center">
+        <span className="brand-mark inline-flex size-10 items-center justify-center rounded-xl text-white">
+          <SparklesIcon className="size-[18px]" aria-hidden="true" />
         </span>
-        <h2 className="mt-5 text-balance text-xl font-semibold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
-          What would you like to check in your inspection reports?
+        <h2 className="mt-5 text-balance text-xl font-medium tracking-[-0.02em] text-slate-900 dark:text-white sm:text-[1.65rem]">
+          What can I help you check?
         </h2>
-        <p className="mt-3 text-sm/6 text-slate-600 dark:text-slate-300">
-          Ask about defects, missing evidence, and what needs fixing before reinspection.
-        </p>
       </div>
 
-      <div className="mx-auto mt-6 w-full max-w-2xl">
+      <div className="mx-auto mt-7 w-full max-w-2xl">
         <ContextChips
           menuOpen={filterMenuOpen}
           selectedContext={selectedContext}
@@ -546,21 +540,21 @@ function EmptyState({
         />
       </div>
 
-      <div className="mx-auto mt-8 grid w-full max-w-2xl gap-2 sm:grid-cols-2">
+      <div className="mx-auto mt-5 grid w-full max-w-2xl gap-2 sm:grid-cols-2">
         {examplePrompts.map((prompt) => (
           <button
             key={prompt}
             type="button"
             disabled={disabled}
             onClick={() => onSelectPrompt(prompt)}
-          className="rounded-lg border border-slate-200 bg-white/60 px-3.5 py-2 text-left text-sm/6 font-medium text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50/40 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-[#101012] dark:text-slate-300 dark:hover:border-indigo-300/30 dark:hover:bg-white/5 dark:hover:text-white"
+          className="rounded-xl border border-black/10 bg-white/32 px-3.5 py-2.5 text-left text-[13px]/5 font-medium text-slate-600 backdrop-blur transition hover:border-indigo-200 hover:bg-white/65 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/[0.08] dark:bg-white/[0.025] dark:text-slate-400 dark:hover:border-indigo-300/25 dark:hover:bg-white/[0.05] dark:hover:text-white"
           >
             {prompt}
           </button>
         ))}
       </div>
 
-      <div className="mx-auto mt-4 w-full max-w-2xl">
+      <div className="mx-auto mt-3 w-full max-w-2xl">
         <QuestionComposer
           input={input}
           isThinking={isThinking}
@@ -569,7 +563,6 @@ function EmptyState({
           onSubmit={onSubmit}
           onSubmitQuestion={onSelectPrompt}
         />
-        <HelperText />
       </div>
     </div>
   );
@@ -591,8 +584,8 @@ function ContextChips({
   if (compact) {
     return (
       <div className="relative flex flex-wrap items-center gap-2">
-        <span className="text-xs/5 font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-500">
-          Filter
+        <span className="text-[11px]/4 font-medium text-slate-500 dark:text-slate-500">
+          Scope
         </span>
         <span className="rounded-full border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 dark:border-indigo-300/40 dark:bg-indigo-500/15 dark:text-indigo-100">
           {selectedContext}
@@ -602,7 +595,7 @@ function ContextChips({
           onClick={onToggleMenu}
           className="rounded-full border border-slate-200 bg-transparent px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:border-indigo-200 hover:text-indigo-700 dark:border-white/10 dark:text-slate-400 dark:hover:border-indigo-300/30 dark:hover:text-white"
         >
-          Change filter
+          Change
         </button>
         {menuOpen ? (
           <div className="absolute top-10 left-0 z-10 w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-white/10 dark:bg-[#0b0b0c]">
@@ -632,11 +625,8 @@ function ContextChips({
   }
 
   return (
-    <div className="mb-4">
-      <p className="mb-2 text-xs/5 font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-500">
-        Filter reports
-      </p>
-      <div className="flex flex-wrap gap-2">
+    <div>
+      <div className="flex flex-wrap justify-center gap-2">
         {contextChips.map((chip) => {
           const selected = chip === selectedContext;
           return (
@@ -645,7 +635,7 @@ function ContextChips({
               type="button"
               onClick={() => onSelectContext(chip)}
               className={classNames(
-                "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+                "rounded-full border px-3 py-1.5 text-[12px]/4 font-medium transition",
                 selected
                   ? "border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-300/40 dark:bg-indigo-500/15 dark:text-indigo-100"
                   : "border-slate-200 bg-transparent text-slate-500 hover:border-indigo-200 hover:text-indigo-700 dark:border-white/10 dark:text-slate-400 dark:hover:border-indigo-300/30 dark:hover:text-white"
@@ -658,7 +648,7 @@ function ContextChips({
         <button
           type="button"
           onClick={onToggleMenu}
-          className="rounded-full border border-slate-200 bg-transparent px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:border-indigo-200 hover:text-indigo-700 dark:border-white/10 dark:text-slate-400 dark:hover:border-indigo-300/30 dark:hover:text-white"
+          className="rounded-full border border-black/10 bg-white/15 px-3 py-1.5 text-[12px]/4 font-medium text-slate-500 transition hover:border-indigo-200 hover:bg-white/40 hover:text-indigo-700 dark:border-white/[0.08] dark:text-slate-500 dark:hover:border-indigo-300/25 dark:hover:bg-white/[0.04] dark:hover:text-white"
         >
           More
         </button>
@@ -704,7 +694,7 @@ function QuestionComposer({
 }) {
   return (
     <form onSubmit={onSubmit}>
-      <div className="rounded-xl border border-indigo-200 bg-white p-2 shadow-sm ring-1 ring-indigo-100 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-300/40 dark:border-white/[0.12] dark:bg-[#050506] dark:shadow-none dark:ring-white/10 dark:focus-within:border-indigo-300/50 dark:focus-within:ring-indigo-400/25">
+      <div className="rounded-2xl border border-black/10 bg-white/70 p-2 shadow-[0_14px_45px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-300/20 dark:border-white/[0.11] dark:bg-black/45 dark:shadow-[0_18px_50px_rgba(0,0,0,0.28)] dark:focus-within:border-indigo-300/35 dark:focus-within:ring-indigo-400/15">
         <div className="flex items-end gap-2">
           <textarea
             ref={textareaRef}
@@ -717,13 +707,13 @@ function QuestionComposer({
               }
             }}
             rows={1}
-            placeholder="Type a question about your reports..."
-            className="max-h-36 min-h-11 flex-1 resize-none bg-transparent px-3 py-2.5 text-sm/6 text-slate-900 outline-none placeholder:text-slate-400 dark:text-white dark:placeholder:text-slate-500"
+            placeholder="Ask about your reports"
+            className="max-h-36 min-h-11 flex-1 resize-none bg-transparent px-3 py-2.5 text-[13px]/6 text-slate-900 outline-none placeholder:text-slate-400 dark:text-white dark:placeholder:text-slate-500"
           />
           <button
             type="submit"
             disabled={!input.trim() || isThinking}
-            className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white transition hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-indigo-500 dark:hover:bg-indigo-400"
+            className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm transition hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:cursor-not-allowed disabled:opacity-35 dark:bg-indigo-500 dark:hover:bg-indigo-400"
           >
             <PaperAirplaneIcon className="size-4" aria-hidden="true" />
             <span className="sr-only">Send message</span>
@@ -734,26 +724,18 @@ function QuestionComposer({
   );
 }
 
-function HelperText({ compact = false }: { compact?: boolean }) {
-  return (
-    <p className="mt-2 text-center text-xs/5 text-slate-500 dark:text-slate-500">
-      {compact ? "Based on uploaded reports." : "Based on your uploaded reports."}
-    </p>
-  );
-}
-
 function MessageBlock({ message }: { message: ChatMessage }) {
   const isUser = message.role === "user";
 
   return (
-    <article className={classNames("flex items-start gap-2", isUser ? "justify-end" : "")}>
+    <article className={classNames("flex items-start gap-3", isUser ? "justify-end" : "")}>
       {!isUser ? <Avatar role="assistant" state={message.state} /> : null}
-      <div className={classNames("min-w-0", isUser ? "order-1 max-w-[78%]" : "w-full max-w-[min(92%,64rem)]")}>
+      <div className={classNames("min-w-0", isUser ? "order-1 max-w-[78%]" : "w-full max-w-[min(92%,48rem)]")}>
         <div
           className={classNames(
-            "rounded-xl text-sm/6",
+            "rounded-2xl text-[13px]/6",
             isUser
-              ? "bg-indigo-600 px-4 py-3 text-white shadow-sm dark:bg-indigo-500"
+              ? "bg-slate-900 px-4 py-2.5 text-white shadow-sm dark:bg-white/[0.09]"
               : message.state === "error"
                 ? "border border-rose-200 bg-rose-50 px-4 py-3 text-rose-800 dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-100"
                 : "text-slate-700 dark:text-slate-100"
@@ -771,7 +753,6 @@ function MessageBlock({ message }: { message: ChatMessage }) {
           </div>
         ) : null}
       </div>
-      {isUser ? <Avatar role="user" /> : null}
     </article>
   );
 }
@@ -1277,7 +1258,7 @@ function ThinkingBlock() {
       <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm/6 text-slate-600 dark:border-white/10 dark:bg-[#101012] dark:text-slate-300">
         <div className="flex items-center gap-2">
           <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" />
-          Checking your inspection records...
+          Checking records...
         </div>
       </div>
     </div>
