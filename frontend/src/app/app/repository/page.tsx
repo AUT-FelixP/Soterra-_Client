@@ -8,7 +8,11 @@ import {
   DialogTitle,
 } from "@headlessui/react";
 import {
+  ArchiveBoxIcon,
+  ChevronDownIcon,
   DocumentTextIcon,
+  LockClosedIcon,
+  ShieldCheckIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 
@@ -44,7 +48,7 @@ const repositoryProcessingMessage =
 const repositoryCompleteMessage =
   "Extraction complete. Repository statuses are up to date.";
 const modalInputClassName =
-  "block w-full rounded-md bg-white/5 px-3 py-2 text-sm text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500";
+  "block w-full rounded-xl border border-white/[0.08] bg-black/35 px-3.5 py-2.5 text-sm text-white shadow-inner shadow-black/20 outline-none placeholder:text-zinc-600 transition focus:border-indigo-400/70 focus:bg-black/50 focus:ring-4 focus:ring-indigo-500/10";
 
 const repositoryStorageKey = "soterra-repository-items";
 
@@ -289,11 +293,8 @@ export default function RepositoryPage() {
     setSubmitting(true);
 
     const formElement = event.currentTarget;
-    const form = new FormData(formElement);
     const nextProjectName = projectName.trim();
     const nextSiteName = siteName.trim();
-    const encrypted = form.get("encryptFiles") === "on";
-    const zipContents = form.get("zipContents") === "on";
     const extractableFiles = queuedFiles.filter(isSupportedReportFile);
     const repositoryOnlyFiles = queuedFiles.filter((file) => !isSupportedReportFile(file));
     const folderGroups = groupFilesByFolder(repositoryOnlyFiles);
@@ -371,10 +372,10 @@ export default function RepositoryPage() {
       nextItems.push({
         id: `repo-files-${Date.now()}`,
         name: nextProjectName ? `${nextProjectName} files` : `${looseFiles.length} uploaded file${looseFiles.length === 1 ? "" : "s"}`,
-        type: zipContents || looseFiles.some(isZipFile) ? "Zip" : "Files",
+        type: looseFiles.some(isZipFile) ? "Zip" : "Files",
         itemCount: looseFiles.length,
         size: looseFiles.reduce((total, file) => total + file.size, 0),
-        status: encrypted ? "Encrypted" : "Ready",
+        status: "Ready",
         uploadedAt: timestamp,
         project: nextProjectName,
         site: nextSiteName,
@@ -384,11 +385,11 @@ export default function RepositoryPage() {
     folderGroups.forEach((files, folderName) => {
       nextItems.push({
         id: `repo-folder-${Date.now()}-${folderName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
-        name: zipContents ? `${folderName}.zip` : folderName,
-        type: zipContents ? "Zip" : "Folder",
+        name: folderName,
+        type: "Folder",
         itemCount: files.length,
         size: files.reduce((total, file) => total + file.size, 0),
-        status: encrypted ? "Encrypted" : "Ready",
+        status: "Ready",
         uploadedAt: timestamp,
         project: nextProjectName,
         site: nextSiteName,
@@ -626,35 +627,42 @@ export default function RepositoryPage() {
       <Dialog open={modalOpen} onClose={setModalOpen} className="relative z-50">
         <DialogBackdrop
           transition
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity data-closed:opacity-0"
+          className="fixed inset-0 bg-black/80 backdrop-blur-md transition-opacity duration-200 data-closed:opacity-0"
         />
 
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <DialogPanel
             transition
-            className="flex max-h-[calc(100vh-2rem)] w-full max-w-2xl transform flex-col overflow-hidden rounded-2xl bg-gray-900 shadow-2xl ring-1 ring-white/10 transition data-closed:scale-95 data-closed:opacity-0"
+            className="relative flex max-h-[calc(100vh-2rem)] w-full max-w-2xl transform flex-col overflow-hidden rounded-[1.35rem] border border-white/[0.09] bg-[#09090b]/98 shadow-[0_32px_100px_rgba(0,0,0,0.72)] transition duration-200 data-closed:scale-[0.98] data-closed:opacity-0"
           >
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-indigo-400/80 to-transparent" />
+            <div className="pointer-events-none absolute -right-28 -top-36 size-72 rounded-full bg-indigo-500/[0.08] blur-3xl" />
             <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-              <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-6 sm:py-5">
-                <div className="min-w-0">
-                  <DialogTitle className="text-base font-semibold text-white">
+              <div className="relative flex items-start justify-between gap-4 border-b border-white/[0.07] px-5 py-5 sm:px-6 sm:py-6">
+                <div className="flex min-w-0 gap-3.5">
+                  <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl border border-indigo-400/20 bg-indigo-500/15 text-indigo-300 shadow-lg shadow-indigo-950/20">
+                    <DocumentTextIcon className="size-5" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0">
+                  <DialogTitle className="text-lg font-semibold tracking-tight text-white">
                     Upload inspection reports
                   </DialogTitle>
-                  <p className="mt-1 text-sm/6 text-gray-400">
-                    Add PDF or Word reports for a project or site. We&apos;ll organise them for analysis.
+                  <p className="mt-1 text-sm/6 text-zinc-400">
+                    Add PDF or Word reports. Soterra will organise and analyse them by project.
                   </p>
+                  </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-md bg-white/5 text-gray-300 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.04] text-zinc-400 transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
                 >
                   <XMarkIcon className="size-5" aria-hidden="true" />
                   <span className="sr-only">Close upload modal</span>
                 </button>
               </div>
 
-              <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5 sm:px-6">
+              <div className="relative min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
                 {uploadError ? (
                   <div className="rounded-md border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm/6 text-rose-100">
                     {uploadError}
@@ -665,19 +673,22 @@ export default function RepositoryPage() {
                   <div
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={handleDrop}
-                    className="rounded-xl border border-dashed border-white/15 bg-white/[0.03] px-4 py-5 text-center transition hover:border-indigo-400/60 hover:bg-white/[0.05]"
+                    className="group rounded-2xl border border-dashed border-white/[0.12] bg-white/[0.025] px-4 py-6 text-center transition hover:border-indigo-400/55 hover:bg-indigo-500/[0.035]"
                   >
-                    <p className="text-sm font-semibold text-white">
+                    <span className="mx-auto mb-3 inline-flex size-10 items-center justify-center rounded-xl border border-white/[0.08] bg-black/30 text-zinc-400 transition group-hover:border-indigo-400/25 group-hover:text-indigo-300">
+                      <ArchiveBoxIcon className="size-5" aria-hidden="true" />
+                    </span>
+                    <p className="text-sm font-semibold text-zinc-100">
                       Drop PDF or Word reports here
                     </p>
-                    <p className="mt-1 text-sm text-gray-400">
-                      or choose files from your computer
+                    <p className="mt-1 text-sm text-zinc-500">
+                      Up to 50 MB per file
                     </p>
                     <div className="mt-4 flex flex-wrap justify-center gap-2">
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="rounded-md bg-white/10 px-4 py-2 text-sm font-semibold text-gray-100 transition hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                        className="rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-950/25 transition hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
                       >
                         Choose files
                       </button>
@@ -688,7 +699,7 @@ export default function RepositoryPage() {
                           folderInputRef.current?.setAttribute("directory", "");
                           folderInputRef.current?.click();
                         }}
-                        className="rounded-md bg-white/10 px-4 py-2 text-sm font-semibold text-gray-100 transition hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                        className="rounded-xl border border-white/[0.09] bg-white/[0.05] px-4 py-2.5 text-sm font-semibold text-zinc-200 transition hover:border-white/15 hover:bg-white/[0.09] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
                       >
                         Choose folder
                       </button>
@@ -772,10 +783,13 @@ export default function RepositoryPage() {
                 ) : null}
 
                 <section className="space-y-4">
-                  <h3 className="text-sm font-semibold text-white">Details</h3>
+                  <div>
+                    <h3 className="text-sm font-semibold text-white">Report details</h3>
+                    <p className="mt-1 text-xs text-zinc-500">Used to organise reports and scope analysis.</p>
+                  </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
-                      <label htmlFor="repository-project-name" className="block text-sm font-medium text-gray-200">
+                      <label htmlFor="repository-project-name" className="block text-sm font-medium text-zinc-300">
                         Project name <span className="text-indigo-300">*</span>
                       </label>
                       <input
@@ -789,7 +803,7 @@ export default function RepositoryPage() {
                       />
                     </div>
                     <div>
-                      <label htmlFor="repository-site-name" className="block text-sm font-medium text-gray-200">
+                      <label htmlFor="repository-site-name" className="block text-sm font-medium text-zinc-300">
                         Site <span className="text-indigo-300">*</span>
                       </label>
                       <input
@@ -805,42 +819,41 @@ export default function RepositoryPage() {
                   </div>
                 </section>
 
-                <details className="group rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                  <summary className="cursor-pointer list-none text-sm font-semibold text-gray-200 outline-none focus-visible:rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
-                    Advanced options
-                    <span className="ml-2 text-xs font-normal text-gray-500 group-open:hidden">Show</span>
-                    <span className="ml-2 hidden text-xs font-normal text-gray-500 group-open:inline">Hide</span>
+                <details className="group rounded-2xl border border-white/[0.07] bg-white/[0.025] px-4 py-3.5 open:bg-white/[0.035]">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-semibold text-zinc-200 outline-none focus-visible:rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
+                    <span className="flex items-center gap-2.5">
+                      <ShieldCheckIcon className="size-4 text-zinc-500" aria-hidden="true" />
+                      Advanced options
+                      <span className="rounded-full border border-white/[0.08] bg-black/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">Coming soon</span>
+                    </span>
+                    <ChevronDownIcon className="size-4 text-zinc-500 transition group-open:rotate-180" aria-hidden="true" />
                   </summary>
-                  <div className="mt-4 space-y-3">
-                    <label className="flex items-start gap-3 text-sm text-gray-300">
+                  <div className="mt-4 space-y-2.5 border-t border-white/[0.06] pt-4">
+                    <label className="flex cursor-not-allowed items-start gap-3 rounded-xl border border-white/[0.06] bg-black/20 p-3.5 text-sm text-zinc-500">
                       <input
                         name="zipContents"
                         type="checkbox"
-                        className="mt-1 size-4 rounded border-white/20 bg-white/5 text-indigo-500 focus:ring-2 focus:ring-indigo-500"
+                        disabled
+                        className="mt-1 size-4 rounded border-white/10 bg-white/5 text-indigo-500 opacity-50"
                       />
                       <span>
-                        <span className="block font-medium text-gray-100">Package files before upload</span>
-                        <span className="text-xs/5 text-gray-500">Useful when uploading folders.</span>
+                        <span className="block font-medium text-zinc-400">Package folders as ZIP files</span>
+                        <span className="text-xs/5 text-zinc-600">Requires connected repository storage.</span>
                       </span>
                     </label>
-                    <label className="flex items-start gap-3 text-sm text-gray-300">
-                      <input
-                        name="encryptFiles"
-                        type="checkbox"
-                        defaultChecked
-                        className="mt-1 size-4 rounded border-white/20 bg-white/5 text-indigo-500 focus:ring-2 focus:ring-indigo-500"
-                      />
+                    <div className="flex items-start gap-3 rounded-xl border border-emerald-400/10 bg-emerald-400/[0.035] p-3.5 text-sm text-zinc-400">
+                      <LockClosedIcon className="mt-0.5 size-4 shrink-0 text-emerald-400/70" aria-hidden="true" />
                       <span>
-                        <span className="block font-medium text-gray-100">Keep files protected</span>
-                        <span className="text-xs/5 text-gray-500">Recommended for inspection reports.</span>
+                        <span className="block font-medium text-zinc-300">Workspace access protection is active</span>
+                        <span className="text-xs/5 text-zinc-500">Reports remain limited to authenticated members of this workspace.</span>
                       </span>
-                    </label>
+                    </div>
                   </div>
                 </details>
               </div>
 
-              <div className="sticky bottom-0 flex flex-col gap-3 border-t border-white/10 bg-gray-900/95 px-5 py-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                <p className="text-sm text-gray-400">
+              <div className="sticky bottom-0 flex flex-col gap-3 border-t border-white/[0.07] bg-[#09090b]/95 px-5 py-4 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                <p className="text-sm text-zinc-500">
                   {queuedFiles.length > 0
                     ? `${queuedFiles.length} report${queuedFiles.length === 1 ? "" : "s"} ready to upload`
                     : "Choose PDF or Word reports to continue"}
@@ -850,14 +863,14 @@ export default function RepositoryPage() {
                     type="button"
                     onClick={() => setModalOpen(false)}
                     disabled={submitting}
-                    className="rounded-md bg-white/10 px-4 py-2 text-sm font-semibold text-gray-100 transition hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-zinc-300 transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={!canUpload}
-                    className="rounded-md bg-indigo-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-950/30 transition hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {submitting ? "Uploading..." : "Upload content"}
                   </button>
