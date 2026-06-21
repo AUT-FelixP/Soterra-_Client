@@ -22,6 +22,7 @@ type ChatMessage = {
   content: string;
   routes?: AgentRouteCitation[];
   state?: "ready" | "error";
+  structuredResponse?: StructuredResponse;
 };
 
 type AgentRouteCitation = {
@@ -40,7 +41,12 @@ type AgentResponse = {
   used_tools?: Array<{ name: string; reason?: string }>;
   suggested_follow_ups?: string[];
   confidence?: "low" | "medium" | "high";
+  structured_response?: StructuredResponse;
 };
+
+type LocationOption = { project: string; address: string; location: string; open_issue_count: number; high_priority_count: number };
+type StructuredIssue = { id: string; title: string; exact_location?: string | null; project?: string; address?: string; severity?: string; trade?: string; status?: string; what_happened?: string; why_it_matters?: string; what_to_do_next?: string; evidence_required?: string[]; source_report?: string; source_page?: number; source_quote?: string; confidence?: number; warnings?: string[] };
+type StructuredResponse = { type?: string; options?: LocationOption[]; items?: StructuredIssue[]; follow_up_buttons?: string[] };
 
 type AgentManifest = {
   enabled?: boolean;
@@ -127,6 +133,15 @@ export default function SoterraAiPage() {
     return () => {
       active = false;
     };
+  }, []);
+
+  useEffect(() => {
+    const handleFollowUp = (event: Event) => {
+      setInput((event as CustomEvent<string>).detail);
+      textareaRef.current?.focus();
+    };
+    window.addEventListener("soterra-chat-follow-up", handleFollowUp);
+    return () => window.removeEventListener("soterra-chat-follow-up", handleFollowUp);
   }, []);
 
   async function loadSessions() {
@@ -251,6 +266,7 @@ export default function SoterraAiPage() {
             payload?.answer?.trim() ||
             "Soterra AI checked the records but did not receive a summary.",
           state: "ready",
+          structuredResponse: payload?.structured_response,
         },
       ]);
       void loadSessions();
@@ -744,7 +760,7 @@ function MessageBlock({ message }: { message: ChatMessage }) {
           {isUser || message.state === "error" ? (
             <span className="whitespace-pre-wrap">{message.content}</span>
           ) : (
-            <AgentAnswer content={message.content} />
+            <><AgentAnswer content={message.content} />{message.structuredResponse ? <StructuredAgentResponse response={message.structuredResponse} /> : null}</>
           )}
         </div>
         {!isUser && message.routes?.length ? (
@@ -755,6 +771,16 @@ function MessageBlock({ message }: { message: ChatMessage }) {
       </div>
     </article>
   );
+}
+
+function StructuredAgentResponse({ response }: { response: StructuredResponse }) {
+  if (response.type === "location_clarification") {
+    return <div className="mt-3 grid gap-2 sm:grid-cols-2">{response.options?.map((option) => <button key={`${option.project}-${option.location}`} type="button" className="rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-indigo-300 hover:bg-indigo-50 dark:border-white/10 dark:bg-[#101012] dark:hover:bg-indigo-500/10" onClick={() => window.dispatchEvent(new CustomEvent("soterra-chat-follow-up", { detail: `Show open issues at ${option.location}` }))}><div className="font-semibold text-slate-900 dark:text-white">{option.project}</div><div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{option.address} · {option.location}</div><div className="mt-2 text-sm text-slate-700 dark:text-slate-200">{option.open_issue_count} open · {option.high_priority_count} high priority</div></button>)}</div>;
+  }
+  if (response.type === "issue_cards") {
+    return <div className="mt-3 space-y-3">{response.items?.map((issue) => <article key={issue.id} className="rounded-xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-[#101012]"><div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold text-slate-900 dark:text-white">{issue.title}</h3><p className="mt-1 text-sm text-indigo-700 dark:text-indigo-200">{issue.exact_location || "Exact location needs confirmation"}</p></div><span className={priorityTone(issue.severity)}>{issue.severity}</span></div><dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2"><MetaItem label="Project" value={issue.project} /><MetaItem label="Address" value={issue.address} /><MetaItem label="Trade / status" value={[issue.trade, issue.status].filter(Boolean).join(" · ")} /><MetaItem label="Source" value={[issue.source_report, issue.source_page ? `page ${issue.source_page}` : ""].filter(Boolean).join(" · ")} /></dl>{issue.what_happened ? <p className="mt-3 text-sm text-slate-700 dark:text-slate-200">{issue.what_happened}</p> : null}{issue.what_to_do_next ? <p className="mt-2 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-400/10 dark:text-emerald-100"><b>Next:</b> {issue.what_to_do_next}</p> : null}{issue.source_quote ? <blockquote className="mt-2 border-l-2 border-indigo-300 pl-3 text-sm italic text-slate-600 dark:text-slate-300">“{issue.source_quote}”</blockquote> : null}<div className="mt-2 text-xs text-slate-500">Confidence {Math.round((issue.confidence || 0) * 100)}%{issue.warnings?.length ? ` · ${issue.warnings.join(" · ")}` : ""}</div></article>)}</div>;
+  }
+  return null;
 }
 
 type AnswerBlock =

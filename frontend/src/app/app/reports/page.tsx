@@ -341,7 +341,7 @@ export default function ReportsPage() {
         trade: String(formData.get("trade") ?? "General"),
       };
 
-      const rows: UploadResultRow[] = [];
+      let rows: UploadResultRow[] = [];
       const acceptedReports: Report[] = [];
       const uploadingRows: UploadResultRow[] = files.map((file) => ({
         filename: file.name,
@@ -355,7 +355,7 @@ export default function ReportsPage() {
       setSelectedFiles([]);
       form.reset();
 
-      for (const file of files) {
+      const uploadResults = await Promise.all(files.map(async (file, index) => {
         const singleFileForm = new FormData();
         singleFileForm.append("file", file);
         singleFileForm.append("project", baseFields.project);
@@ -364,33 +364,19 @@ export default function ReportsPage() {
         singleFileForm.append("inspector", baseFields.inspector);
         singleFileForm.append("trade", baseFields.trade);
 
-        const response = await fetch("/api/reports", {
-          method: "POST",
-          body: singleFileForm,
-        });
-
-        const payload = await response.json().catch(() => null);
-
-        if (!response.ok) {
-          rows.push({
-            filename: file.name,
-            status: "failed",
-            message: normalizeUploadError(getUploadErrorMessage(payload) ?? "Failed to upload report."),
-          });
-          continue;
+        try {
+          const response = await fetch("/api/reports", { method: "POST", body: singleFileForm });
+          const payload = await response.json().catch(() => null);
+          if (!response.ok) return { index, row: { filename: file.name, status: "failed", message: normalizeUploadError(getUploadErrorMessage(payload) ?? "Failed to upload report.") } as UploadResultRow };
+          const nextItem = payload?.item as ApiReport | undefined;
+          return { index, item: nextItem ? normalizeReport(nextItem, index) : undefined, row: { filename: file.name, status: payload?.isProcessing ? "processing" : "accepted", message: payload?.isProcessing ? "Processing" : "Uploaded" } as UploadResultRow };
+        } catch (reason) {
+          return { index, row: { filename: file.name, status: "failed", message: normalizeUploadError(reason instanceof Error ? reason.message : "Failed to upload report.") } as UploadResultRow };
         }
-
-        const nextItem = payload?.item as ApiReport | undefined;
-        const isProcessing = Boolean(payload?.isProcessing);
-        if (nextItem) {
-          acceptedReports.push(normalizeReport(nextItem, acceptedReports.length));
-        }
-        rows.push({
-          filename: file.name,
-          status: isProcessing ? "processing" : "accepted",
-          message: isProcessing ? "Processing" : "Uploaded",
-        });
-      }
+      }));
+      uploadResults.sort((a, b) => a.index - b.index);
+      rows = uploadResults.map((result) => result.row);
+      acceptedReports.push(...uploadResults.flatMap((result) => result.item ? [result.item] : []));
 
       if (acceptedReports.length > 0) {
         setReports((prev) => {

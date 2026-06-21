@@ -8,6 +8,8 @@ export type InsightFilters = {
   severity: string;
   status: string;
   date_range: string;
+  report_id: string;
+  location: string;
 };
 
 export type ChartDatum = DashboardInsightsResponse["visuals"]["severityDonut"][number];
@@ -20,6 +22,8 @@ export const DEFAULT_INSIGHT_FILTERS: InsightFilters = {
   severity: "All severities",
   status: "All statuses",
   date_range: "All time",
+  report_id: "All reports",
+  location: "All locations",
 };
 
 export const DATE_LABELS: Record<string, string> = {
@@ -28,4 +32,3 @@ export const DATE_LABELS: Record<string, string> = {
   "30d": "Last 30 days",
   "90d": "Last 90 days",
 };
-

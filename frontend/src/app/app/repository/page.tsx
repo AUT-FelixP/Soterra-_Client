@@ -57,6 +57,9 @@ function getUploadErrorMessage(payload: unknown) {
 
   const detail = "detail" in payload ? payload.detail : null;
   if (typeof detail === "string" && detail.trim()) return detail;
+  if (detail && typeof detail === "object" && "message" in detail && typeof detail.message === "string" && detail.message.trim()) {
+    return detail.message;
+  }
 
   const message = "message" in payload ? payload.message : null;
   if (typeof message === "string" && message.trim()) return message;
@@ -318,7 +321,7 @@ export default function RepositoryPage() {
     );
 
     if (extractableFiles.length > 0) {
-      for (const sourceFile of extractableFiles) {
+      const results = await Promise.all(extractableFiles.map(async (sourceFile) => {
         const reportForm = new FormData();
         reportForm.append("file", sourceFile);
         reportForm.append("project", nextProjectName);
@@ -343,7 +346,7 @@ export default function RepositoryPage() {
             isProcessing: payload?.isProcessing,
           };
 
-          uploadedReports.push({
+          return { item: {
             id:
               typeof result.item?.id === "string" && result.item.id.trim()
                 ? result.item.id
@@ -359,13 +362,13 @@ export default function RepositoryPage() {
             uploadedAt: timestamp,
             project: nextProjectName,
             site: nextSiteName,
-          });
+          } as RepositoryItem };
         } catch (error) {
-          uploadErrors.push(
-            `${sourceFile.name}: ${error instanceof Error ? normalizeUploadError(error.message) : "Failed to upload report."}`
-          );
+          return { error: `${sourceFile.name}: ${error instanceof Error ? normalizeUploadError(error.message) : "Failed to upload report."}` };
         }
-      }
+      }));
+      uploadedReports.push(...results.flatMap((result) => result.item ? [result.item] : []));
+      uploadErrors.push(...results.flatMap((result) => result.error ? [result.error] : []));
     }
 
     if (looseFiles.length > 0) {

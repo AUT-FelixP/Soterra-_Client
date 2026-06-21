@@ -1,12 +1,12 @@
 "use client";
 
-import { InsightsChartGrid } from "./insights-charts";
+import { InsightsChartGrid, ProjectComparisonPanel } from "./insights-charts";
 import { InsightsFilterBar, KpiStrip } from "./insights-controls";
-import { DataQuality, IssueDrilldown, RepeatedPatterns, RiskMatrix } from "./insights-tables";
+import { DataQuality, IssuePriorityTable } from "./insights-tables";
 import { useInsightsDashboard } from "./use-insights-dashboard";
 
 export default function InsightsPage() {
-  const { data, error, filters, loading, resetFilters, updateFilter } = useInsightsDashboard();
+  const { data, error, filters, issueFilterOptions, loading, reportNames, resetFilters, updateFilter } = useInsightsDashboard();
 
   if (loading && !data) return <DashboardSkeleton />;
   if (error && !data) return <MessageState title="We couldn't load insights" body={error} action={resetFilters} />;
@@ -22,7 +22,7 @@ export default function InsightsPage() {
         {loading ? <span className="text-xs font-medium text-blue-600 dark:text-blue-300">Updating dashboard…</span> : null}
       </header>
 
-      <InsightsFilterBar filters={filters} options={data.filters} onChange={updateFilter} onReset={resetFilters} />
+      <InsightsFilterBar filters={filters} options={data.filters} issues={issueFilterOptions} reportNames={reportNames} onChange={updateFilter} onReset={resetFilters} />
       {error ? <div className="rounded border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200">{error} Showing the last valid response.</div> : null}
 
       {data.issueDrilldown.length === 0 ? (
@@ -31,12 +31,9 @@ export default function InsightsPage() {
         <>
           <KpiStrip kpis={data.kpis} />
           <InsightsChartGrid insights={data} />
-          <RiskMatrix rows={data.riskMatrix} />
-          <section className="grid gap-3 xl:grid-cols-3">
-            <RepeatedPatterns rows={data.repeatedPatterns} />
-            <DataQuality quality={data.dataQuality} />
-          </section>
-          <IssueDrilldown rows={data.issueDrilldown} />
+          <IssuePriorityTable issues={data.issueDrilldown} risks={data.riskMatrix} reportNames={reportNames} />
+          <ProjectComparisonPanel insights={data} />
+          <DataQuality quality={data.dataQuality} />
         </>
       )}
     </div>
