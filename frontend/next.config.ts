@@ -5,9 +5,7 @@ import { fileURLToPath } from "node:url";
 const projectRoot = dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
-  turbopack: {
-    root: projectRoot,
-  },
+  outputFileTracingRoot: projectRoot,
   images: {
     remotePatterns: [
       {

@@ -50,8 +50,16 @@ type StructuredIssue = { id: string; title: string; exact_location?: string | nu
 type StructuredResponse = { type?: string; options?: LocationOption[]; items?: StructuredIssue[]; follow_up_buttons?: string[] };
 
 type ReportReferenceMaps = {
-  byIssueId: Record<string, string>;
+  byIssueId: Record<string, IssueReportReference>;
+  byIssueTitle: Record<string, IssueReportReference>;
   bySourceName: Record<string, string>;
+};
+
+type IssueReportReference = {
+  reportId: string;
+  project?: string;
+  site?: string;
+  sourceName?: string;
 };
 
 type ApiReportReference = {
@@ -118,6 +126,7 @@ export default function SoterraAiPage() {
   const [manifestError, setManifestError] = useState("");
   const [reportReferences, setReportReferences] = useState<ReportReferenceMaps>({
     byIssueId: {},
+    byIssueTitle: {},
     bySourceName: {},
   });
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -809,13 +818,108 @@ function MessageBlock({
   );
 }
 
-function StructuredAgentResponse({ response }: { response: StructuredResponse }) {
+function StructuredAgentResponse({
+  response,
+  reportReferences,
+}: {
+  response: StructuredResponse;
+  reportReferences: ReportReferenceMaps;
+}) {
   if (response.type === "location_clarification") {
-    return <div className="mt-3 grid gap-2 sm:grid-cols-2">{response.options?.map((option) => <button key={`${option.project}-${option.location}`} type="button" className="rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-indigo-300 hover:bg-indigo-50 dark:border-white/10 dark:bg-[#101012] dark:hover:bg-indigo-500/10" onClick={() => window.dispatchEvent(new CustomEvent("soterra-chat-follow-up", { detail: `Show open issues at ${option.location}` }))}><div className="font-semibold text-slate-900 dark:text-white">{option.project}</div><div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{option.address} · {option.location}</div><div className="mt-2 text-sm text-slate-700 dark:text-slate-200">{option.open_issue_count} open · {option.high_priority_count} high priority</div></button>)}</div>;
+    return (
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        {response.options?.map((option) => (
+          <button
+            key={`${option.project}-${option.location}`}
+            type="button"
+            className="rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50 dark:border-white/10 dark:bg-slate-900/70 dark:shadow-none dark:hover:bg-indigo-500/10"
+            onClick={() =>
+              window.dispatchEvent(
+                new CustomEvent("soterra-chat-follow-up", {
+                  detail: `Show open issues at ${option.location}`,
+                })
+              )
+            }
+          >
+            <div className="font-semibold text-slate-900 dark:text-white">
+              {option.project}
+            </div>
+            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              {[option.address, option.location].filter(Boolean).join(" | ")}
+            </div>
+            <div className="mt-2 text-sm text-slate-700 dark:text-slate-200">
+              {option.open_issue_count} open | {option.high_priority_count} high priority
+            </div>
+          </button>
+        ))}
+      </div>
+    );
   }
+
   if (response.type === "issue_cards") {
-    return <div className="mt-3 space-y-3">{response.items?.map((issue) => <article key={issue.id} className="rounded-xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-[#101012]"><div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold text-slate-900 dark:text-white">{issue.title}</h3><p className="mt-1 text-sm text-indigo-700 dark:text-indigo-200">{issue.exact_location || "Exact location needs confirmation"}</p></div><span className={priorityTone(issue.severity)}>{issue.severity}</span></div><dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2"><MetaItem label="Project" value={issue.project} /><MetaItem label="Address" value={issue.address} /><MetaItem label="Trade / status" value={[issue.trade, issue.status].filter(Boolean).join(" · ")} /><MetaItem label="Source" value={[issue.source_report, issue.source_page ? `page ${issue.source_page}` : ""].filter(Boolean).join(" · ")} /></dl>{issue.what_happened ? <p className="mt-3 text-sm text-slate-700 dark:text-slate-200">{issue.what_happened}</p> : null}{issue.what_to_do_next ? <p className="mt-2 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-400/10 dark:text-emerald-100"><b>Next:</b> {issue.what_to_do_next}</p> : null}{issue.source_quote ? <blockquote className="mt-2 border-l-2 border-indigo-300 pl-3 text-sm italic text-slate-600 dark:text-slate-300">“{issue.source_quote}”</blockquote> : null}<div className="mt-2 text-xs text-slate-500">Confidence {Math.round((issue.confidence || 0) * 100)}%{issue.warnings?.length ? ` · ${issue.warnings.join(" · ")}` : ""}</div></article>)}</div>;
+    return (
+      <div className="mt-3 space-y-3">
+        {response.items?.map((issue) => {
+          const reportHref = resolveReportHref({
+            issueId: issue.id,
+            issueTitle: issue.title,
+            source: issue.source_report,
+            reportReferences,
+          });
+          const sourceLabel = [
+            issue.source_report,
+            issue.source_page ? `page ${issue.source_page}` : "",
+          ].filter(Boolean).join(" | ");
+
+          return (
+            <article
+              key={issue.id}
+              className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-slate-900/70 dark:shadow-none"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-slate-900 dark:text-white">
+                    {reportHref ? (
+                      <Link
+                        href={reportHref}
+                        className="underline-offset-4 hover:text-indigo-700 hover:underline dark:hover:text-indigo-200"
+                      >
+                        {issue.title}
+                      </Link>
+                    ) : (
+                      issue.title
+                    )}
+                  </h3>
+                  <p className="mt-1 text-sm font-medium text-indigo-700 dark:text-indigo-200">
+                    {issue.project || "Project not specified"}
+                  </p>
+                </div>
+                <span className={priorityTone(issue.severity)}>
+                  {issue.severity || "Priority"}
+                </span>
+              </div>
+
+              <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                <MetaItem label="Project / site" value={[issue.project, issue.address].filter(Boolean).join(" | ")} wide />
+                <MetaItem label="Workface location" value={issue.exact_location || issue.project || "Exact location needs confirmation"} wide />
+                <MetaItem label="Trade / status" value={[issue.trade, issue.status].filter(Boolean).join(" | ")} />
+                <MetaItem label="Source report" value={sourceLabel} href={reportHref} />
+              </dl>
+
+              {issue.what_happened ? <p className="mt-3 text-sm/6 text-slate-700 dark:text-slate-200">{issue.what_happened}</p> : null}
+              {issue.what_to_do_next ? <p className="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm/6 text-emerald-900 dark:border-emerald-300/10 dark:bg-emerald-400/10 dark:text-emerald-100"><b>Next action:</b> {issue.what_to_do_next}</p> : null}
+              {issue.source_quote ? <blockquote className="mt-2 border-l-2 border-indigo-300 pl-3 text-sm/6 italic text-slate-600 dark:text-slate-300">{issue.source_quote}</blockquote> : null}
+              <div className="mt-2 text-xs text-slate-500">
+                Confidence {Math.round((issue.confidence || 0) * 100)}%
+                {issue.warnings?.length ? ` | ${issue.warnings.join(" | ")}` : ""}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    );
   }
+
   return null;
 }
 
@@ -825,7 +929,13 @@ type AnswerBlock =
   | { type: "table"; headers: string[]; rows: string[][] }
   | { type: "issue-digest"; issues: IssueDisplay[]; summary: AnswerSummary };
 
-function AgentAnswer({ content }: { content: string }) {
+function AgentAnswer({
+  content,
+  reportReferences,
+}: {
+  content: string;
+  reportReferences: ReportReferenceMaps;
+}) {
   const blocks = parseAgentAnswer(content);
   const summary = extractAnswerSummary(content, blocks);
 
@@ -837,7 +947,7 @@ function AgentAnswer({ content }: { content: string }) {
             <p
               key={`paragraph-${index}`}
               className={classNames(
-                "rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm/6 text-slate-700 shadow-sm dark:border-white/10 dark:bg-[#101012] dark:text-slate-100",
+                "rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm/6 text-slate-700 shadow-sm dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-100",
                 index === 0 ? "text-[15px]/7 font-medium" : ""
               )}
             >
@@ -848,7 +958,7 @@ function AgentAnswer({ content }: { content: string }) {
 
         if (block.type === "ordered-list") {
           return (
-            <div key={`list-${index}`} className="rounded-lg border border-indigo-100 bg-white p-3 dark:border-white/10 dark:bg-[#101012]">
+            <div key={`list-${index}`} className="rounded-xl border border-indigo-100 bg-white p-3 shadow-sm dark:border-white/10 dark:bg-slate-900/70 dark:shadow-none">
               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-indigo-700 dark:text-indigo-200">
                 Suggested fix order
               </p>
@@ -867,10 +977,10 @@ function AgentAnswer({ content }: { content: string }) {
         }
 
         if (block.type === "issue-digest") {
-          return <IssueDigest key={`issue-digest-${index}`} issues={block.issues} summary={block.summary} />;
+          return <IssueDigest key={`issue-digest-${index}`} issues={block.issues} summary={block.summary} reportReferences={reportReferences} />;
         }
 
-        return <AnswerTable key={`table-${index}`} block={block} summary={summary} />;
+        return <AnswerTable key={`table-${index}`} block={block} summary={summary} reportReferences={reportReferences} />;
       })}
     </div>
   );
@@ -879,9 +989,11 @@ function AgentAnswer({ content }: { content: string }) {
 function AnswerTable({
   block,
   summary,
+  reportReferences,
 }: {
   block: Extract<AnswerBlock, { type: "table" }>;
   summary: AnswerSummary;
+  reportReferences: ReportReferenceMaps;
 }) {
   const issueTable = isIssueTable(block.headers);
 
@@ -895,11 +1007,11 @@ function AnswerTable({
       source: row[indexes.source],
       action: row[indexes.action],
     }));
-    return <IssueDigest issues={issues} summary={summary} />;
+    return <IssueDigest issues={issues} summary={summary} reportReferences={reportReferences} />;
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-white/10 dark:bg-[#101012]">
+    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-slate-900/70 dark:shadow-none">
       <table className="min-w-full border-collapse text-left text-xs/5">
         <thead className="bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-300">
           <tr>
@@ -947,9 +1059,11 @@ type IssueDisplay = {
 function IssueDigest({
   issues,
   summary,
+  reportReferences,
 }: {
   issues: IssueDisplay[];
   summary: AnswerSummary;
+  reportReferences: ReportReferenceMaps;
 }) {
   const visibleIssues = issues.slice(0, 6);
   const hiddenIssues = issues.slice(6);
@@ -957,7 +1071,7 @@ function IssueDigest({
   const highCount = issues.filter((issue) => String(issue.priority ?? "").toLowerCase().includes("high")).length;
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#101012]">
+    <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-slate-900/70 dark:shadow-none">
       <div className="flex flex-wrap gap-2">
         <SummaryPill label="Open" value={summary.totalOpen ?? issues.length} tone="slate" />
         <SummaryPill label="High priority" value={summary.highPriority ?? criticalCount + highCount} tone="amber" />
@@ -967,13 +1081,13 @@ function IssueDigest({
       {summary.project || summary.address ? (
         <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm/6 text-slate-700 dark:bg-white/5 dark:text-slate-200">
           <span className="font-semibold">{summary.project || "Project"}</span>
-          {summary.address ? <span className="text-slate-500 dark:text-slate-400"> · {summary.address}</span> : null}
+          {summary.address ? <span className="text-slate-500 dark:text-slate-400"> | {summary.address}</span> : null}
         </div>
       ) : null}
 
       <div className="mt-4 space-y-3">
         {visibleIssues.map((issue, index) => (
-          <IssueCard key={`${issue.issue ?? "issue"}-${index}`} {...issue} />
+          <IssueCard key={`${issue.issue ?? "issue"}-${index}`} {...issue} project={summary.project} reportReferences={reportReferences} />
         ))}
       </div>
 
@@ -984,7 +1098,7 @@ function IssueDigest({
           </summary>
           <div className="space-y-3 border-t border-slate-200 p-3 dark:border-white/10">
             {hiddenIssues.map((issue, index) => (
-              <IssueCard key={`${issue.issue ?? "hidden-issue"}-${index}`} {...issue} compact />
+              <IssueCard key={`${issue.issue ?? "hidden-issue"}-${index}`} {...issue} project={summary.project} reportReferences={reportReferences} compact />
             ))}
           </div>
         </details>
@@ -1020,27 +1134,47 @@ function SummaryPill({
 function IssueCard({
   priority,
   issue,
+  project,
   location,
   trade,
   source,
   action,
   evidence,
+  reportReferences,
   compact = false,
 }: {
   priority?: string;
   issue?: string;
+  project?: string;
   location?: string;
   trade?: string;
   source?: string;
   action?: string;
   evidence?: string;
+  reportReferences: ReportReferenceMaps;
   compact?: boolean;
 }) {
+  const issueReference = resolveIssueReportReference({
+    issueTitle: issue,
+    source,
+    reportReferences,
+  });
+  const reportHref = issueReference ? `/app/reports/${encodeURIComponent(issueReference.reportId)}` : resolveReportHref({ source, reportReferences });
+  const inferredProject = project || [issueReference?.project, issueReference?.site].filter(Boolean).join(" | ");
+  const displayedLocation = location || "Location not specified";
+  const displayedSource = source && source !== "Not specified" ? source : issueReference?.sourceName;
+
   return (
-    <article className="rounded-lg border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-[#101012]">
+    <article className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-white/10 dark:bg-slate-900/70 dark:shadow-none">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <h3 className="min-w-0 flex-1 text-[15px]/6 font-semibold text-slate-900 dark:text-white">
-          {issue || "Open issue"}
+          {reportHref ? (
+            <Link href={reportHref} className="underline-offset-4 hover:text-indigo-700 hover:underline dark:hover:text-indigo-200">
+              {issue || "Open issue"}
+            </Link>
+          ) : (
+            issue || "Open issue"
+          )}
         </h3>
         <span
           className={classNames(
@@ -1052,16 +1186,16 @@ function IssueCard({
         </span>
       </div>
       <dl className={classNames("mt-3 grid gap-2", compact ? "sm:grid-cols-2" : "sm:grid-cols-3")}>
-        <MetaItem label="Location" value={location} wide={!compact} />
+        <MetaItem label="Project / location" value={[inferredProject, displayedLocation].filter(Boolean).join(" | ")} wide={!compact} />
         <MetaItem label="Trade" value={trade} />
-        <MetaItem label="Source" value={source} wide={!compact} />
+        <MetaItem label="Source report" value={displayedSource} href={reportHref} wide={!compact} />
       </dl>
-      <div className="mt-3 rounded-md border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm/6 text-emerald-900 dark:border-emerald-300/10 dark:bg-emerald-400/10 dark:text-emerald-100">
+      <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm/6 text-emerald-900 dark:border-emerald-300/10 dark:bg-emerald-400/10 dark:text-emerald-100">
         <span className="font-semibold">Recommended action: </span>
         {action || "Assign the responsible trade and upload close-out evidence."}
       </div>
       {evidence ? (
-        <div className="mt-2 rounded-md border border-indigo-100 bg-indigo-50 px-3 py-2 text-sm/6 text-indigo-900 dark:border-indigo-300/10 dark:bg-indigo-400/10 dark:text-indigo-100">
+        <div className="mt-2 rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-sm/6 text-indigo-900 dark:border-indigo-300/10 dark:bg-indigo-400/10 dark:text-indigo-100">
           <span className="font-semibold">Evidence required: </span>
           {evidence}
         </div>
@@ -1073,22 +1207,153 @@ function IssueCard({
 function MetaItem({
   label,
   value,
+  href,
   wide = false,
 }: {
   label: string;
   value?: string;
+  href?: string | null;
   wide?: boolean;
 }) {
+  const displayValue = value || "Not specified";
+
   return (
     <div className={classNames("min-w-0", wide ? "sm:col-span-2" : "")}>
       <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
         {label}
       </dt>
       <dd className="mt-0.5 text-sm/5 text-slate-700 dark:text-slate-100">
-        {value || "Not specified"}
+        {href ? (
+          <Link href={href} className="font-semibold text-indigo-700 underline-offset-4 hover:underline dark:text-indigo-300">
+            {displayValue}
+          </Link>
+        ) : (
+          displayValue
+        )}
       </dd>
     </div>
   );
+}
+
+function buildReportReferenceMaps(payload: unknown): ReportReferenceMaps {
+  const items = Array.isArray(payload)
+    ? payload
+    : payload && typeof payload === "object" && "items" in payload && Array.isArray(payload.items)
+      ? payload.items
+      : [];
+  const byIssueId: Record<string, IssueReportReference> = {};
+  const byIssueTitle: Record<string, IssueReportReference> = {};
+  const bySourceName: Record<string, string> = {};
+
+  for (const item of items) {
+    if (!item || typeof item !== "object") continue;
+    const report = item as ApiReportReference;
+    const reportId = typeof report.id === "string" ? report.id : "";
+    if (!reportId) continue;
+    const project = typeof report.project === "string" ? report.project : undefined;
+    const site = typeof report.site === "string" ? report.site : undefined;
+    const sourceName = typeof report.sourceFileName === "string" ? report.sourceFileName : undefined;
+    const reference: IssueReportReference = { reportId, project, site, sourceName };
+
+    addReportNameKey(bySourceName, report.sourceFileName, reportId);
+    addReportNameKey(bySourceName, report.project, reportId);
+    addReportNameKey(bySourceName, report.site, reportId);
+
+    if (Array.isArray(report.issues)) {
+      for (const issue of report.issues) {
+        if (!issue || typeof issue !== "object") continue;
+        const issueRecord = issue as { id?: unknown; title?: unknown };
+        if (typeof issueRecord.id === "string" && issueRecord.id.trim()) {
+          byIssueId[issueRecord.id.trim()] = reference;
+        }
+        if (typeof issueRecord.title === "string" && issueRecord.title.trim()) {
+          byIssueTitle[normalizeReportLookupKey(issueRecord.title)] = reference;
+        }
+        addReportNameKey(bySourceName, issueRecord.title, reportId);
+      }
+    }
+  }
+
+  return { byIssueId, byIssueTitle, bySourceName };
+}
+
+function addReportNameKey(target: Record<string, string>, value: unknown, reportId: string) {
+  if (typeof value !== "string" || !value.trim()) return;
+  const normalized = normalizeReportLookupKey(value);
+  if (normalized) target[normalized] = reportId;
+}
+
+function resolveReportHref({
+  issueId,
+  issueTitle,
+  source,
+  reportReferences,
+}: {
+  issueId?: string;
+  issueTitle?: string;
+  source?: string;
+  reportReferences: ReportReferenceMaps;
+}) {
+  const reference = resolveIssueReportReference({ issueId, issueTitle, source, reportReferences });
+  const reportId: string | undefined = reference?.reportId ?? resolveReportIdFromSource(source, reportReferences);
+  return reportId ? `/app/reports/${encodeURIComponent(reportId)}` : null;
+}
+
+function resolveIssueReportReference({
+  issueId,
+  issueTitle,
+  source,
+  reportReferences,
+}: {
+  issueId?: string;
+  issueTitle?: string;
+  source?: string;
+  reportReferences: ReportReferenceMaps;
+}) {
+  if (issueId && reportReferences.byIssueId[issueId]) {
+    return reportReferences.byIssueId[issueId];
+  }
+
+  const normalizedIssueTitle = issueTitle ? normalizeReportLookupKey(issueTitle) : "";
+  if (normalizedIssueTitle && reportReferences.byIssueTitle[normalizedIssueTitle]) {
+    return reportReferences.byIssueTitle[normalizedIssueTitle];
+  }
+
+  if (normalizedIssueTitle) {
+    const fuzzyTitle = Object.entries(reportReferences.byIssueTitle).find(
+      ([title]) => normalizedIssueTitle.includes(title) || title.includes(normalizedIssueTitle)
+    )?.[1];
+    if (fuzzyTitle) return fuzzyTitle;
+  }
+
+  const reportId = resolveReportIdFromSource(source, reportReferences);
+  return reportId ? { reportId, sourceName: source } : undefined;
+}
+
+function resolveReportIdFromSource(source: string | undefined, reportReferences: ReportReferenceMaps): string | undefined {
+  if (!source) return undefined;
+  const normalizedSource = normalizeReportLookupKey(source);
+  if (reportReferences.bySourceName[normalizedSource]) {
+    return reportReferences.bySourceName[normalizedSource];
+  }
+
+  const sourceWithoutPage = normalizeReportLookupKey(source.replace(/\bpage\s+\d+\b/gi, ""));
+  if (reportReferences.bySourceName[sourceWithoutPage]) {
+    return reportReferences.bySourceName[sourceWithoutPage];
+  }
+
+  return Object.entries(reportReferences.bySourceName).find(
+    ([name]) => normalizedSource.includes(name) || name.includes(normalizedSource)
+  )?.[1];
+}
+
+function normalizeReportLookupKey(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/\.[a-z0-9]+$/i, "")
+    .replace(/\bpage\s+\d+\b/gi, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 function parseAgentAnswer(content: string): AnswerBlock[] {
@@ -1317,7 +1582,7 @@ function ThinkingBlock() {
   return (
     <div className="flex gap-3">
       <Avatar role="assistant" />
-      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm/6 text-slate-600 dark:border-white/10 dark:bg-[#101012] dark:text-slate-300">
+      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm/6 text-slate-600 dark:border-white/10 dark:bg-slate-900/70 dark:text-slate-300">
         <div className="flex items-center gap-2">
           <ArrowPathIcon className="size-4 animate-spin" aria-hidden="true" />
           Checking records...
