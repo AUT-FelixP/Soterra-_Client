@@ -24,7 +24,7 @@ export function ReportPrintActions({ reportId }: { reportId: string }) {
         throw new Error(payload?.detail ?? payload?.message ?? "Unable to delete report.");
       }
       removeRepositoryItemsFromStorage([reportId]);
-      router.push("/app/reports");
+      router.push("/app/repository");
       router.refresh();
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "Unable to delete report.");

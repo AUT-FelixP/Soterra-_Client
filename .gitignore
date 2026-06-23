@@ -47,3 +47,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+frontend/audits/insights-usability-2026-06-22/01-desktop-overview.png
+frontend/audits/insights-usability-2026-06-22/02-desktop-issues.png
+frontend/audits/insights-usability-2026-06-22/03-mobile-overview.png
+frontend/audits/insights-usability-2026-06-22/04-mobile-issues.png
+frontend/audits/insights-usability-2026-06-22/audit.md

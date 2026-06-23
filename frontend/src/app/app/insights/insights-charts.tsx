@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactElement } from "react";
 import {
   Area,
   AreaChart,
@@ -17,12 +18,13 @@ import {
 import type { DashboardInsightsResponse } from "@/lib/dashboardAppData";
 import type { ChartDatum } from "./insights-types";
 
-const BLUE = "#2f7df4";
-const BLUE_SHADES = ["#2f7df4", "#5b9cff", "#84b5ff", "#a7cbff", "#c4dcff"];
+const BLUE = "#6366f1";
+const BLUE_SHADES = ["#6366f1", "#38bdf8", "#22c55e", "#f59e0b", "#fb7185"];
 const AXIS = "#8b949e";
 const GRID = "rgba(139, 148, 158, 0.16)";
 const CHART_FONT_SIZE = 12;
 const RESPONSIVE_PROPS = { minWidth: 0, initialDimension: { width: 1, height: 1 } } as const;
+type ChartConfig = { key: string; title: string; content: ReactElement };
 
 function ChartTooltip({ active, payload, label }: {
   active?: boolean;
@@ -32,7 +34,7 @@ function ChartTooltip({ active, payload, label }: {
   if (!active || !payload?.length) return null;
   const row = payload[0];
   return (
-    <div className="rounded-md border border-white/10 bg-[#0d0f12] px-3 py-2 text-sm leading-5 shadow-2xl">
+    <div className="rounded-lg border border-white/10 bg-[#0d0f12] px-3 py-2 text-sm leading-5 shadow-2xl">
       <p className="max-w-64 text-slate-400">{row.payload?.fullName || label || row.payload?.name}</p>
       <p className="mt-1 font-semibold text-white">{Number(row.value || 0).toLocaleString()} findings</p>
     </div>
@@ -46,13 +48,12 @@ export function ChartPanel({ title, total, className, children }: {
   children: React.ReactNode;
 }) {
   return (
-    <article className={`min-h-72 min-w-0 rounded-md border border-slate-200 bg-white shadow-sm dark:border-[#24272d] dark:bg-[#111316] dark:shadow-none ${className || ""}`}>
-      <header className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3 dark:border-[#24272d]">
+    <article className={`min-h-72 min-w-0 rounded-xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-slate-900/70 dark:shadow-none ${className || ""}`}>
+      <header className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3 dark:border-white/10">
         <div>
           <h2 className="text-base font-semibold leading-6 tracking-tight">{title}</h2>
           <p className="mt-1 text-xl font-semibold tabular-nums tracking-tight">{total.toLocaleString()}</p>
         </div>
-        <span className="rounded border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-xs font-semibold leading-4 text-blue-600 dark:text-blue-300">Findings</span>
       </header>
       <div className="h-56 min-w-0 px-2 pb-3 pt-2">{children}</div>
     </article>
@@ -185,19 +186,41 @@ export function ProjectBars({ data }: { data: ChartDatum[] }) {
 
 export function InsightsChartGrid({ insights }: { insights: DashboardInsightsResponse }) {
   const total = insights.issueDrilldown.length;
+  const charts = [
+    insights.visuals.severityDonut.length > 1
+      ? { key: "severity", title: "Issues by severity", content: <DistributionChart data={insights.visuals.severityDonut} /> }
+      : null,
+    insights.visuals.statusDonut.length > 1
+      ? { key: "status", title: "Issues by status", content: <DistributionChart data={insights.visuals.statusDonut} /> }
+      : null,
+    insights.visuals.tradeBar.length > 0
+      ? { key: "trade", title: "Issues by trade", content: <HorizontalBars data={insights.visuals.tradeBar} /> }
+      : null,
+    insights.visuals.categoryBar.length > 0
+      ? { key: "category", title: "Issues by category", content: <HorizontalBars data={insights.visuals.categoryBar} /> }
+      : null,
+    insights.visuals.locationBar.length > 0
+      ? { key: "location", title: "Issues by location", content: <LocationBars data={insights.visuals.locationBar} /> }
+      : null,
+    insights.visuals.issuesOverTime.length > 1
+      ? { key: "time", title: "Issues over time", content: <IssuesTrend data={insights.visuals.issuesOverTime} /> }
+      : null,
+  ].filter((chart): chart is ChartConfig => Boolean(chart));
+
+  if (!charts.length) return null;
+
   return (
     <section className="grid gap-3 xl:grid-cols-12" aria-label="Inspection charts">
-      <ChartPanel title="Issues by severity" total={total} className="xl:col-span-4"><DistributionChart data={insights.visuals.severityDonut} /></ChartPanel>
-      <ChartPanel title="Issues by status" total={total} className="xl:col-span-4"><DistributionChart data={insights.visuals.statusDonut} /></ChartPanel>
-      <ChartPanel title="Issues by trade" total={total} className="xl:col-span-4"><HorizontalBars data={insights.visuals.tradeBar} /></ChartPanel>
-      <ChartPanel title="Issues by category" total={total} className="xl:col-span-4"><HorizontalBars data={insights.visuals.categoryBar} /></ChartPanel>
-      <ChartPanel title="Issues by location" total={total} className="xl:col-span-4"><LocationBars data={insights.visuals.locationBar} /></ChartPanel>
-      <ChartPanel title="Issues over time" total={total} className="xl:col-span-4"><IssuesTrend data={insights.visuals.issuesOverTime} /></ChartPanel>
+      {charts.map((chart) => (
+        <ChartPanel key={chart.key} title={chart.title} total={total} className="xl:col-span-4">{chart.content}</ChartPanel>
+      ))}
     </section>
   );
 }
 
 export function ProjectComparisonPanel({ insights }: { insights: DashboardInsightsResponse }) {
+  if (insights.visuals.projectComparison.length <= 1) return null;
+
   return (
     <ChartPanel title="Project comparison" total={insights.issueDrilldown.length}>
       <ProjectBars data={insights.visuals.projectComparison} />

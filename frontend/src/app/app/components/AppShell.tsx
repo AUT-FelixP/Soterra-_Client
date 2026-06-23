@@ -79,8 +79,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
 
     if (pathname.startsWith("/app/reports/")) {
-      label = "Report";
-      parentHref = "/app/reports";
+      label = "Repository report";
+      parentHref = "/app/repository";
     }
 
     return [

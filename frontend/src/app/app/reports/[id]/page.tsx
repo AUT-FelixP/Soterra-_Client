@@ -144,10 +144,10 @@ export default async function ReportDetailPage({
 
             <div className="report-print-hidden flex flex-wrap items-center gap-3">
               <Link
-                href="/app/reports"
+                href="/app/repository"
                 className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm/6 font-semibold text-slate-900 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
               >
-                Back to reports
+                Back to repository
               </Link>
               <ReportPrintActions reportId={report.id} />
             </div>
@@ -184,7 +184,7 @@ export default async function ReportDetailPage({
               </div>
             </div>
 
-            <dl className="grid gap-px bg-slate-200/70 sm:grid-cols-2 dark:bg-white/10">
+            <dl className="grid gap-px bg-slate-200/70 sm:grid-cols-2 dark:bg-white/[0.07]">
               <SummaryItem label="Report ID" value={report.id} />
               <SummaryItem label="Total issues" value={String(issues.length)} />
               <SummaryItem label="Highest severity" value={highestSeverity} />
@@ -319,11 +319,11 @@ function StatCard({ label, value }: { label: string; value: string }) {
 
 function SummaryItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-white px-5 py-4 dark:bg-slate-900">
+    <div className="bg-white px-5 py-4 dark:bg-white/[0.025]">
       <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">
         {label}
       </dt>
-      <dd className="mt-2 text-[1.75rem] font-semibold tracking-tight text-slate-900 dark:text-white">
+      <dd className="mt-2 break-words text-[1.75rem] font-semibold tracking-tight text-slate-900 dark:text-white">
         {value}
       </dd>
     </div>

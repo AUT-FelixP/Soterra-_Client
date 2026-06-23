@@ -2,6 +2,7 @@
 
 import type { FormEvent, MutableRefObject, RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import {
   ArrowPathIcon,
   ChatBubbleLeftRightIcon,
@@ -47,6 +48,19 @@ type AgentResponse = {
 type LocationOption = { project: string; address: string; location: string; open_issue_count: number; high_priority_count: number };
 type StructuredIssue = { id: string; title: string; exact_location?: string | null; project?: string; address?: string; severity?: string; trade?: string; status?: string; what_happened?: string; why_it_matters?: string; what_to_do_next?: string; evidence_required?: string[]; source_report?: string; source_page?: number; source_quote?: string; confidence?: number; warnings?: string[] };
 type StructuredResponse = { type?: string; options?: LocationOption[]; items?: StructuredIssue[]; follow_up_buttons?: string[] };
+
+type ReportReferenceMaps = {
+  byIssueId: Record<string, string>;
+  bySourceName: Record<string, string>;
+};
+
+type ApiReportReference = {
+  id?: unknown;
+  project?: unknown;
+  site?: unknown;
+  sourceFileName?: unknown;
+  issues?: unknown;
+};
 
 type AgentManifest = {
   enabled?: boolean;
@@ -102,6 +116,10 @@ export default function SoterraAiPage() {
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [manifestError, setManifestError] = useState("");
+  const [reportReferences, setReportReferences] = useState<ReportReferenceMaps>({
+    byIssueId: {},
+    bySourceName: {},
+  });
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const messageIdRef = useRef(0);
 
@@ -129,6 +147,7 @@ export default function SoterraAiPage() {
       });
 
     void loadSessions();
+    void loadReportReferences();
 
     return () => {
       active = false;
@@ -160,6 +179,17 @@ export default function SoterraAiPage() {
       setManifestError("Chat history is unavailable.");
     } finally {
       setSessionsLoading(false);
+    }
+  }
+
+  async function loadReportReferences() {
+    try {
+      const response = await fetch("/api/reports", { cache: "no-store" });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) return;
+      setReportReferences(buildReportReferenceMaps(payload));
+    } catch {
+      // Issue cards still render without report links if reports are temporarily unavailable.
     }
   }
 
@@ -420,7 +450,7 @@ export default function SoterraAiPage() {
               ) : (
                 <div className="space-y-3">
                   {messages.map((message) => (
-                    <MessageBlock key={message.id} message={message} />
+                    <MessageBlock key={message.id} message={message} reportReferences={reportReferences} />
                   ))}
 
                   {isThinking ? <ThinkingBlock /> : null}
@@ -740,7 +770,13 @@ function QuestionComposer({
   );
 }
 
-function MessageBlock({ message }: { message: ChatMessage }) {
+function MessageBlock({
+  message,
+  reportReferences,
+}: {
+  message: ChatMessage;
+  reportReferences: ReportReferenceMaps;
+}) {
   const isUser = message.role === "user";
 
   return (
@@ -760,7 +796,7 @@ function MessageBlock({ message }: { message: ChatMessage }) {
           {isUser || message.state === "error" ? (
             <span className="whitespace-pre-wrap">{message.content}</span>
           ) : (
-            <><AgentAnswer content={message.content} />{message.structuredResponse ? <StructuredAgentResponse response={message.structuredResponse} /> : null}</>
+            <><AgentAnswer content={message.content} reportReferences={reportReferences} />{message.structuredResponse ? <StructuredAgentResponse response={message.structuredResponse} reportReferences={reportReferences} /> : null}</>
           )}
         </div>
         {!isUser && message.routes?.length ? (
