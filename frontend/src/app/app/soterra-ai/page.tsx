@@ -1,7 +1,7 @@
 "use client";
 
 import type { FormEvent, MutableRefObject, RefObject } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowPathIcon,
@@ -46,8 +46,22 @@ type AgentResponse = {
 };
 
 type LocationOption = { project: string; address: string; location: string; open_issue_count: number; high_priority_count: number };
-type StructuredIssue = { id: string; title: string; exact_location?: string | null; project?: string; address?: string; severity?: string; trade?: string; status?: string; what_happened?: string; why_it_matters?: string; what_to_do_next?: string; evidence_required?: string[]; source_report?: string; source_page?: number; source_quote?: string; confidence?: number; warnings?: string[] };
-type StructuredResponse = { type?: string; options?: LocationOption[]; items?: StructuredIssue[]; follow_up_buttons?: string[] };
+type IssueStatus = "Open" | "In Progress" | "Closed";
+type StructuredIssue = { id: string; title: string; exact_location?: string | null; location?: string | null; site?: string; level?: string; unit?: string; area?: string; project?: string; project_name?: string; address?: string; severity?: string; trade?: string; status?: string; what_happened?: string; description?: string; why_it_matters?: string; what_to_do_next?: string; required_fix?: string; evidence_required?: string[]; source_report?: string; report_id?: string; source_page?: number; source_quote?: string; confidence?: number; warnings?: string[] };
+type StructuredResponse = { type?: string; options?: LocationOption[]; items?: StructuredIssue[]; issues?: StructuredIssue[]; summary?: Record<string, unknown>; count?: number; critical_count?: number; high_count?: number; follow_up_buttons?: string[]; issue_id?: string; status?: IssueStatus };
+
+type ToastState = {
+  title: string;
+  message: string;
+  tone: "success" | "error";
+};
+
+type IssueFacetEntry = { value?: string; count?: number };
+type IssueFacets = {
+  trades: string[];
+  locations: string[];
+  severities: string[];
+};
 
 type ReportReferenceMaps = {
   byIssueId: Record<string, IssueReportReference>;
@@ -98,6 +112,29 @@ const examplePrompts = [
   "Latest report summary",
 ] as const;
 
+const quickActionPrompts = [
+  "High priority only",
+  "By trade",
+  "Evidence needed",
+] as const;
+
+const supportedQuerySuggestions = [
+  "Show open issues",
+  "Show high priority only",
+  "Filter by trade",
+  "Summarize reinspection readiness",
+  "List evidence needed",
+  "Show open fire issues",
+  "Show open plumbing issues",
+  "Close issue issue-123",
+] as const;
+
+const issueStatusOptions: Array<{ label: string; value: IssueStatus }> = [
+  { label: "Open", value: "Open" },
+  { label: "In progress", value: "In Progress" },
+  { label: "Closed", value: "Closed" },
+];
+
 const contextChips = [
   "All reports",
   "Latest report",
@@ -124,6 +161,12 @@ export default function SoterraAiPage() {
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [manifestError, setManifestError] = useState("");
+  const [toast, setToast] = useState<ToastState | null>(null);
+  const [issueFacets, setIssueFacets] = useState<IssueFacets>({
+    trades: [],
+    locations: [],
+    severities: [],
+  });
   const [reportReferences, setReportReferences] = useState<ReportReferenceMaps>({
     byIssueId: {},
     byIssueTitle: {},
@@ -131,6 +174,7 @@ export default function SoterraAiPage() {
   });
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const messageIdRef = useRef(0);
+  const autocompleteOptions = useMemo(() => buildQuerySuggestions(issueFacets), [issueFacets]);
 
   useEffect(() => {
     let active = true;
@@ -157,6 +201,7 @@ export default function SoterraAiPage() {
 
     void loadSessions();
     void loadReportReferences();
+    void loadIssueFacets();
 
     return () => {
       active = false;
@@ -168,8 +213,19 @@ export default function SoterraAiPage() {
       setInput((event as CustomEvent<string>).detail);
       textareaRef.current?.focus();
     };
+    const handleToast = (event: Event) => {
+      const nextToast = (event as CustomEvent<ToastState>).detail;
+      setToast(nextToast);
+      window.setTimeout(() => {
+        setToast((current) => (current === nextToast ? null : current));
+      }, 3200);
+    };
     window.addEventListener("soterra-chat-follow-up", handleFollowUp);
-    return () => window.removeEventListener("soterra-chat-follow-up", handleFollowUp);
+    window.addEventListener("soterra-chat-toast", handleToast);
+    return () => {
+      window.removeEventListener("soterra-chat-follow-up", handleFollowUp);
+      window.removeEventListener("soterra-chat-toast", handleToast);
+    };
   }, []);
 
   async function loadSessions() {
@@ -199,6 +255,27 @@ export default function SoterraAiPage() {
       setReportReferences(buildReportReferenceMaps(payload));
     } catch {
       // Issue cards still render without report links if reports are temporarily unavailable.
+    }
+  }
+
+  async function loadIssueFacets() {
+    try {
+      const response = await fetch("/api/analytics/facets", { cache: "no-store" });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload) return;
+      setIssueFacets({
+        trades: readFacetValues(payload.trades),
+        locations: [
+          ...readFacetValues(payload.sites),
+          ...readFacetValues(payload.levels),
+          ...readFacetValues(payload.units),
+          ...readFacetValues(payload.areas),
+          ...readFacetValues(payload.addresses),
+        ],
+        severities: readFacetValues(payload.severities),
+      });
+    } catch {
+      // Static suggestions remain available if facets are temporarily unavailable.
     }
   }
 
@@ -276,6 +353,31 @@ export default function SoterraAiPage() {
     void answerQuestion(trimmedQuestion);
   }
 
+  function showToast(nextToast: ToastState) {
+    setToast(nextToast);
+    window.setTimeout(() => {
+      setToast((current) => (current === nextToast ? null : current));
+    }, 3200);
+  }
+
+  async function updateIssueStatus(issueId: string, status: IssueStatus) {
+    const response = await fetch("/api/agent-chat/changeIssueStatus", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ issueId, status }),
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(payload?.detail || payload?.message || "Issue status could not be updated.");
+    }
+    showToast({
+      title: "Status updated",
+      message: confirmationMessageFromIssueUpdate(payload, issueId, status),
+      tone: "success",
+    });
+    void loadIssueFacets();
+  }
+
   async function answerQuestion(question: string) {
     try {
       const response = await fetch("/api/agent-chat", {
@@ -335,6 +437,7 @@ export default function SoterraAiPage() {
 
   return (
     <div className="soterra-ai-panel flex h-[calc(100vh-6.5rem)] min-h-[620px] overflow-hidden rounded-2xl border border-black/10 bg-white/55 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur-2xl dark:border-white/[0.09] dark:bg-black/45 dark:shadow-[0_24px_90px_rgba(0,0,0,0.38)]">
+      {toast ? <ToastNotice toast={toast} /> : null}
       <aside className="hidden w-64 shrink-0 border-r border-black/10 bg-white/36 dark:border-white/[0.08] dark:bg-black/25 lg:flex lg:flex-col">
         <div className="flex h-16 items-center justify-between gap-2 border-b border-black/10 px-4 dark:border-white/[0.08]">
           <div className="flex min-w-0 items-center gap-2">
@@ -454,12 +557,18 @@ export default function SoterraAiPage() {
                   onToggleFilterMenu={() => setFilterMenuOpen((open) => !open)}
                   filterMenuOpen={filterMenuOpen}
                   onSelectPrompt={submitQuestion}
+                  autocompleteOptions={autocompleteOptions}
                   onSubmit={handleSubmit}
                 />
               ) : (
                 <div className="space-y-3">
                   {messages.map((message) => (
-                    <MessageBlock key={message.id} message={message} reportReferences={reportReferences} />
+                    <MessageBlock
+                      key={message.id}
+                      message={message}
+                      reportReferences={reportReferences}
+                      onUpdateIssueStatus={updateIssueStatus}
+                    />
                   ))}
 
                   {isThinking ? <ThinkingBlock /> : null}
@@ -478,6 +587,7 @@ export default function SoterraAiPage() {
                   onChangeInput={setInput}
                   onSubmit={handleSubmit}
                   onSubmitQuestion={submitQuestion}
+                  autocompleteOptions={autocompleteOptions}
                 />
               </div>
             </div>
@@ -550,6 +660,22 @@ function formatSessionDate(value: string) {
   }).format(date);
 }
 
+function ToastNotice({ toast }: { toast: ToastState }) {
+  const toneClass =
+    toast.tone === "success"
+      ? "border-emerald-300/30 bg-emerald-950/90 text-emerald-50"
+      : "border-rose-300/30 bg-rose-950/90 text-rose-50";
+
+  return (
+    <div className="fixed right-5 top-5 z-50 w-[min(24rem,calc(100vw-2.5rem))]">
+      <div className={classNames("rounded-xl border px-4 py-3 shadow-2xl backdrop-blur", toneClass)}>
+        <p className="text-sm font-semibold">{toast.title}</p>
+        <p className="mt-1 text-xs/5 opacity-90">{toast.message}</p>
+      </div>
+    </div>
+  );
+}
+
 function EmptyState({
   input,
   isThinking,
@@ -561,6 +687,7 @@ function EmptyState({
   onToggleFilterMenu,
   filterMenuOpen,
   onSelectPrompt,
+  autocompleteOptions,
   onSubmit,
 }: {
   input: string;
@@ -573,6 +700,7 @@ function EmptyState({
   onToggleFilterMenu: () => void;
   filterMenuOpen: boolean;
   onSelectPrompt: (question: string) => void;
+  autocompleteOptions: string[];
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   return (
@@ -617,6 +745,7 @@ function EmptyState({
           onChangeInput={onChangeInput}
           onSubmit={onSubmit}
           onSubmitQuestion={onSelectPrompt}
+          autocompleteOptions={autocompleteOptions}
         />
       </div>
     </div>
@@ -739,6 +868,7 @@ function QuestionComposer({
   onChangeInput,
   onSubmit,
   onSubmitQuestion,
+  autocompleteOptions,
 }: {
   input: string;
   isThinking: boolean;
@@ -746,10 +876,64 @@ function QuestionComposer({
   onChangeInput: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onSubmitQuestion: (question: string) => void;
+  autocompleteOptions: string[];
 }) {
+  const visibleSuggestions = useMemo(() => {
+    const query = input.trim().toLowerCase();
+    if (!query) return [];
+    return uniqueStrings([...supportedQuerySuggestions, ...autocompleteOptions])
+      .filter((suggestion) => suggestion.toLowerCase().includes(query))
+      .slice(0, 4);
+  }, [autocompleteOptions, input]);
+
   return (
     <form onSubmit={onSubmit}>
+      <div className="mb-2 flex flex-wrap gap-2">
+        {quickActionPrompts.map((prompt) => (
+          <button
+            key={prompt}
+            type="button"
+            disabled={isThinking}
+            onClick={() => {
+              if (prompt === "By trade") {
+                onChangeInput("Show open issues for ");
+                textareaRef.current?.focus();
+                return;
+              }
+              if (prompt === "High priority only") {
+                onSubmitQuestion("Show high priority only");
+                return;
+              }
+              if (prompt === "Evidence needed") {
+                onSubmitQuestion("List evidence needed");
+                return;
+              }
+            }}
+            className="rounded-full border border-black/10 bg-white/45 px-3 py-1.5 text-[12px]/4 font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.035] dark:text-slate-300 dark:hover:border-indigo-300/30 dark:hover:text-white"
+          >
+            {prompt}
+          </button>
+        ))}
+      </div>
       <div className="rounded-2xl border border-black/10 bg-white/70 p-2 shadow-[0_14px_45px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-300/20 dark:border-white/[0.11] dark:bg-black/45 dark:shadow-[0_18px_50px_rgba(0,0,0,0.28)] dark:focus-within:border-indigo-300/35 dark:focus-within:ring-indigo-400/15">
+        {visibleSuggestions.length ? (
+          <div className="mb-1 grid gap-1 border-b border-black/10 pb-2 dark:border-white/10">
+            {visibleSuggestions.map((suggestion) => (
+              <button
+                key={suggestion}
+                type="button"
+                disabled={isThinking}
+                onClick={() => {
+                  onChangeInput(suggestion);
+                  textareaRef.current?.focus();
+                }}
+                className="rounded-lg px-3 py-2 text-left text-[12px]/4 font-medium text-slate-600 transition hover:bg-indigo-50 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-300 dark:hover:bg-indigo-500/10 dark:hover:text-white"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        ) : null}
         <div className="flex items-end gap-2">
           <textarea
             ref={textareaRef}
@@ -782,11 +966,15 @@ function QuestionComposer({
 function MessageBlock({
   message,
   reportReferences,
+  onUpdateIssueStatus,
 }: {
   message: ChatMessage;
   reportReferences: ReportReferenceMaps;
+  onUpdateIssueStatus: (issueId: string, status: IssueStatus) => Promise<void>;
 }) {
   const isUser = message.role === "user";
+  // Prefer backend issue payloads over prose so cards stay grouped and actionable.
+  const hasStructuredIssues = hasIssueListResponse(message.structuredResponse);
 
   return (
     <article className={classNames("flex items-start gap-3", isUser ? "justify-end" : "")}>
@@ -804,8 +992,27 @@ function MessageBlock({
         >
           {isUser || message.state === "error" ? (
             <span className="whitespace-pre-wrap">{message.content}</span>
+          ) : hasStructuredIssues && message.structuredResponse ? (
+            <StructuredAgentResponse
+              response={message.structuredResponse}
+              reportReferences={reportReferences}
+              onUpdateIssueStatus={onUpdateIssueStatus}
+            />
           ) : (
-            <><AgentAnswer content={message.content} reportReferences={reportReferences} />{message.structuredResponse ? <StructuredAgentResponse response={message.structuredResponse} reportReferences={reportReferences} /> : null}</>
+            <>
+              <AgentAnswer
+                content={message.content}
+                reportReferences={reportReferences}
+                onUpdateIssueStatus={onUpdateIssueStatus}
+              />
+              {message.structuredResponse ? (
+                <StructuredAgentResponse
+                  response={message.structuredResponse}
+                  reportReferences={reportReferences}
+                  onUpdateIssueStatus={onUpdateIssueStatus}
+                />
+              ) : null}
+            </>
           )}
         </div>
         {!isUser && message.routes?.length ? (
@@ -821,9 +1028,11 @@ function MessageBlock({
 function StructuredAgentResponse({
   response,
   reportReferences,
+  onUpdateIssueStatus,
 }: {
   response: StructuredResponse;
   reportReferences: ReportReferenceMaps;
+  onUpdateIssueStatus: (issueId: string, status: IssueStatus) => Promise<void>;
 }) {
   if (response.type === "location_clarification") {
     return (
@@ -856,67 +1065,15 @@ function StructuredAgentResponse({
     );
   }
 
-  if (response.type === "issue_cards") {
+  if (hasIssueListResponse(response)) {
+    const issues = issuesFromStructuredResponse(response);
     return (
-      <div className="mt-3 space-y-3">
-        {response.items?.map((issue) => {
-          const reportHref = resolveReportHref({
-            issueId: issue.id,
-            issueTitle: issue.title,
-            source: issue.source_report,
-            reportReferences,
-          });
-          const sourceLabel = [
-            issue.source_report,
-            issue.source_page ? `page ${issue.source_page}` : "",
-          ].filter(Boolean).join(" | ");
-
-          return (
-            <article
-              key={issue.id}
-              className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-slate-900/70 dark:shadow-none"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h3 className="font-semibold text-slate-900 dark:text-white">
-                    {reportHref ? (
-                      <Link
-                        href={reportHref}
-                        className="underline-offset-4 hover:text-indigo-700 hover:underline dark:hover:text-indigo-200"
-                      >
-                        {issue.title}
-                      </Link>
-                    ) : (
-                      issue.title
-                    )}
-                  </h3>
-                  <p className="mt-1 text-sm font-medium text-indigo-700 dark:text-indigo-200">
-                    {issue.project || "Project not specified"}
-                  </p>
-                </div>
-                <span className={priorityTone(issue.severity)}>
-                  {issue.severity || "Priority"}
-                </span>
-              </div>
-
-              <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-                <MetaItem label="Project / site" value={[issue.project, issue.address].filter(Boolean).join(" | ")} wide />
-                <MetaItem label="Workface location" value={issue.exact_location || issue.project || "Exact location needs confirmation"} wide />
-                <MetaItem label="Trade / status" value={[issue.trade, issue.status].filter(Boolean).join(" | ")} />
-                <MetaItem label="Source report" value={sourceLabel} href={reportHref} />
-              </dl>
-
-              {issue.what_happened ? <p className="mt-3 text-sm/6 text-slate-700 dark:text-slate-200">{issue.what_happened}</p> : null}
-              {issue.what_to_do_next ? <p className="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm/6 text-emerald-900 dark:border-emerald-300/10 dark:bg-emerald-400/10 dark:text-emerald-100"><b>Next action:</b> {issue.what_to_do_next}</p> : null}
-              {issue.source_quote ? <blockquote className="mt-2 border-l-2 border-indigo-300 pl-3 text-sm/6 italic text-slate-600 dark:text-slate-300">{issue.source_quote}</blockquote> : null}
-              <div className="mt-2 text-xs text-slate-500">
-                Confidence {Math.round((issue.confidence || 0) * 100)}%
-                {issue.warnings?.length ? ` | ${issue.warnings.join(" | ")}` : ""}
-              </div>
-            </article>
-          );
-        })}
-      </div>
+      <GroupedIssueSummary
+        issues={issues}
+        summary={summaryFromStructuredResponse(response, issues)}
+        reportReferences={reportReferences}
+        onUpdateIssueStatus={onUpdateIssueStatus}
+      />
     );
   }
 
@@ -932,9 +1089,11 @@ type AnswerBlock =
 function AgentAnswer({
   content,
   reportReferences,
+  onUpdateIssueStatus,
 }: {
   content: string;
   reportReferences: ReportReferenceMaps;
+  onUpdateIssueStatus: (issueId: string, status: IssueStatus) => Promise<void>;
 }) {
   const blocks = parseAgentAnswer(content);
   const summary = extractAnswerSummary(content, blocks);
@@ -959,9 +1118,6 @@ function AgentAnswer({
         if (block.type === "ordered-list") {
           return (
             <div key={`list-${index}`} className="rounded-xl border border-indigo-100 bg-white p-3 shadow-sm dark:border-white/10 dark:bg-slate-900/70 dark:shadow-none">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-indigo-700 dark:text-indigo-200">
-                Suggested fix order
-              </p>
               <ol className="space-y-2">
                 {block.items.map((item, itemIndex) => (
                   <li key={`${item}-${itemIndex}`} className="flex gap-2 text-sm/6 text-slate-700 dark:text-slate-100">
@@ -977,10 +1133,26 @@ function AgentAnswer({
         }
 
         if (block.type === "issue-digest") {
-          return <IssueDigest key={`issue-digest-${index}`} issues={block.issues} summary={block.summary} reportReferences={reportReferences} />;
+          return (
+            <GroupedIssueSummary
+              key={`issue-digest-${index}`}
+              issues={block.issues}
+              summary={block.summary}
+              reportReferences={reportReferences}
+              onUpdateIssueStatus={onUpdateIssueStatus}
+            />
+          );
         }
 
-        return <AnswerTable key={`table-${index}`} block={block} summary={summary} reportReferences={reportReferences} />;
+        return (
+          <AnswerTable
+            key={`table-${index}`}
+            block={block}
+            summary={summary}
+            reportReferences={reportReferences}
+            onUpdateIssueStatus={onUpdateIssueStatus}
+          />
+        );
       })}
     </div>
   );
@@ -990,10 +1162,12 @@ function AnswerTable({
   block,
   summary,
   reportReferences,
+  onUpdateIssueStatus,
 }: {
   block: Extract<AnswerBlock, { type: "table" }>;
   summary: AnswerSummary;
   reportReferences: ReportReferenceMaps;
+  onUpdateIssueStatus: (issueId: string, status: IssueStatus) => Promise<void>;
 }) {
   const issueTable = isIssueTable(block.headers);
 
@@ -1007,7 +1181,14 @@ function AnswerTable({
       source: row[indexes.source],
       action: row[indexes.action],
     }));
-    return <IssueDigest issues={issues} summary={summary} reportReferences={reportReferences} />;
+    return (
+      <GroupedIssueSummary
+        issues={issues}
+        summary={summary}
+        reportReferences={reportReferences}
+        onUpdateIssueStatus={onUpdateIssueStatus}
+      />
+    );
   }
 
   return (
@@ -1047,8 +1228,11 @@ type AnswerSummary = {
 };
 
 type IssueDisplay = {
+  id?: string;
   priority?: string;
+  status?: string;
   issue?: string;
+  project?: string;
   location?: string;
   trade?: string;
   source?: string;
@@ -1056,55 +1240,245 @@ type IssueDisplay = {
   evidence?: string;
 };
 
-function IssueDigest({
+function GroupedIssueSummary({
   issues,
   summary,
   reportReferences,
+  onUpdateIssueStatus,
 }: {
   issues: IssueDisplay[];
   summary: AnswerSummary;
   reportReferences: ReportReferenceMaps;
+  onUpdateIssueStatus: (issueId: string, status: IssueStatus) => Promise<void>;
 }) {
-  const visibleIssues = issues.slice(0, 6);
-  const hiddenIssues = issues.slice(6);
   const criticalCount = issues.filter((issue) => String(issue.priority ?? "").toLowerCase().includes("critical")).length;
   const highCount = issues.filter((issue) => String(issue.priority ?? "").toLowerCase().includes("high")).length;
+  const groups = groupIssuesByTradeAndSeverity(issues);
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-slate-900/70 dark:shadow-none">
-      <div className="flex flex-wrap gap-2">
-        <SummaryPill label="Open" value={summary.totalOpen ?? issues.length} tone="slate" />
-        <SummaryPill label="High priority" value={summary.highPriority ?? criticalCount + highCount} tone="amber" />
-        <SummaryPill label="Overdue" value={summary.overdue ?? 0} tone="rose" />
-      </div>
-
-      {summary.project || summary.address ? (
-        <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm/6 text-slate-700 dark:bg-white/5 dark:text-slate-200">
-          <span className="font-semibold">{summary.project || "Project"}</span>
-          {summary.address ? <span className="text-slate-500 dark:text-slate-400"> | {summary.address}</span> : null}
-        </div>
-      ) : null}
-
-      <div className="mt-4 space-y-3">
-        {visibleIssues.map((issue, index) => (
-          <IssueCard key={`${issue.issue ?? "issue"}-${index}`} {...issue} project={summary.project} reportReferences={reportReferences} />
-        ))}
-      </div>
-
-      {hiddenIssues.length ? (
-        <details className="mt-3 rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5">
-          <summary className="cursor-pointer px-3 py-2 text-sm font-semibold text-slate-700 hover:text-indigo-700 dark:text-slate-100 dark:hover:text-indigo-200">
-            Show {hiddenIssues.length} more issues
-          </summary>
-          <div className="space-y-3 border-t border-slate-200 p-3 dark:border-white/10">
-            {hiddenIssues.map((issue, index) => (
-              <IssueCard key={`${issue.issue ?? "hidden-issue"}-${index}`} {...issue} project={summary.project} reportReferences={reportReferences} compact />
-            ))}
+    <section className="mt-3 rounded-xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-slate-900/70 dark:shadow-none">
+      <details open>
+        <summary className="cursor-pointer list-none px-4 py-4 marker:hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                Open issue summary
+              </p>
+              <p className="mt-1 text-xs/5 text-slate-500 dark:text-slate-400">
+                Grouped by responsible trade and priority so each crew sees the next work clearly.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <SummaryPill label="Open" value={summary.totalOpen ?? issues.length} tone="slate" />
+              <SummaryPill label="High priority" value={summary.highPriority ?? criticalCount + highCount} tone="amber" />
+              <SummaryPill label="Overdue" value={summary.overdue ?? 0} tone="rose" />
+            </div>
           </div>
-        </details>
-      ) : null}
+          {summary.project || summary.address ? (
+            <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm/6 text-slate-700 dark:bg-white/5 dark:text-slate-200">
+              <span className="font-semibold">{summary.project || "Project"}</span>
+              {summary.address ? <span className="text-slate-500 dark:text-slate-400"> | {summary.address}</span> : null}
+            </div>
+          ) : null}
+        </summary>
+
+        <div className="space-y-3 border-t border-slate-200 p-4 dark:border-white/10">
+          {groups.map((group) => (
+            <IssueGroup
+              key={group.key}
+              group={group}
+              project={summary.project}
+              reportReferences={reportReferences}
+              onUpdateIssueStatus={onUpdateIssueStatus}
+            />
+          ))}
+        </div>
+      </details>
     </section>
   );
+}
+
+function IssueGroup({
+  group,
+  project,
+  reportReferences,
+  onUpdateIssueStatus,
+}: {
+  group: IssueGroupModel;
+  project?: string;
+  reportReferences: ReportReferenceMaps;
+  onUpdateIssueStatus: (issueId: string, status: IssueStatus) => Promise<void>;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const visibleIssues = expanded ? group.issues : group.issues.slice(0, 2);
+  const hiddenCount = group.issues.length - visibleIssues.length;
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50/75 p-3 dark:border-white/10 dark:bg-white/[0.035]">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+          {group.trade} / {group.severity}
+        </h3>
+        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-500 dark:bg-white/10 dark:text-slate-300">
+          {group.issues.length} issue{group.issues.length === 1 ? "" : "s"}
+        </span>
+      </div>
+      <div className="mt-3 space-y-3">
+        {visibleIssues.map((issue, index) => (
+          <IssueCard
+            key={issue.id || `${group.key}-${issue.issue ?? "issue"}-${index}`}
+            {...issue}
+            project={issue.project || project}
+            reportReferences={reportReferences}
+            onUpdateIssueStatus={onUpdateIssueStatus}
+            compact
+          />
+        ))}
+      </div>
+      {hiddenCount > 0 ? (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300 dark:hover:border-indigo-300/30 dark:hover:text-white"
+        >
+          Show {hiddenCount} more
+        </button>
+      ) : expanded && group.issues.length > 2 ? (
+        <button
+          type="button"
+          onClick={() => setExpanded(false)}
+          className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300 dark:hover:border-indigo-300/30 dark:hover:text-white"
+        >
+          Show less
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+type IssueGroupModel = {
+  key: string;
+  trade: string;
+  severity: string;
+  issues: IssueDisplay[];
+};
+
+function hasIssueListResponse(response?: StructuredResponse) {
+  return Boolean(response && (Array.isArray(response.items) || Array.isArray(response.issues)));
+}
+
+function issuesFromStructuredResponse(response: StructuredResponse): IssueDisplay[] {
+  const rawIssues = response.items ?? response.issues ?? [];
+  return rawIssues.map((issue) => ({
+    id: issue.id,
+    priority: issue.severity,
+    status: issue.status,
+    issue: issue.title || "Inspection issue",
+    project: issue.project || issue.project_name,
+    location: [
+      issue.exact_location || issue.location,
+      issue.site,
+      issue.level,
+      issue.unit,
+      issue.area,
+      issue.address,
+    ].filter(Boolean).join(" | "),
+    trade: issue.trade,
+    source: [
+      issue.source_report || issue.report_id,
+      issue.source_page ? `page ${issue.source_page}` : "",
+    ].filter(Boolean).join(" | "),
+    action: issue.what_to_do_next || issue.required_fix || issue.description || issue.what_happened,
+    evidence: Array.isArray(issue.evidence_required) ? issue.evidence_required.filter(Boolean).join(", ") : undefined,
+  }));
+}
+
+function summaryFromStructuredResponse(response: StructuredResponse, issues: IssueDisplay[]): AnswerSummary {
+  const summary = response.summary ?? {};
+  const openFromSummary = readNumber(summary, "open") ?? readNumber(summary, "openIssues");
+  return {
+    totalOpen: response.count ?? openFromSummary ?? issues.length,
+    highPriority: (response.critical_count ?? 0) + (response.high_count ?? 0) || undefined,
+  };
+}
+
+function groupIssuesByTradeAndSeverity(issues: IssueDisplay[]): IssueGroupModel[] {
+  const groups = new Map<string, IssueGroupModel>();
+  for (const issue of issues) {
+    const trade = cleanGroupLabel(issue.trade, "Unassigned trade");
+    const severity = cleanGroupLabel(issue.priority, "Priority not stated");
+    const key = `${trade.toLowerCase()}::${severity.toLowerCase()}`;
+    const group = groups.get(key) ?? { key, trade, severity, issues: [] };
+    group.issues.push(issue);
+    groups.set(key, group);
+  }
+  return Array.from(groups.values()).sort((left, right) => {
+    const priorityDelta = severitySortValue(left.severity) - severitySortValue(right.severity);
+    return priorityDelta || left.trade.localeCompare(right.trade);
+  });
+}
+
+function cleanGroupLabel(value: string | undefined, fallback: string) {
+  const trimmed = String(value ?? "").trim();
+  return trimmed || fallback;
+}
+
+function severitySortValue(value: string) {
+  const normalized = value.toLowerCase();
+  if (normalized.includes("critical")) return 0;
+  if (normalized.includes("high")) return 1;
+  if (normalized.includes("medium")) return 2;
+  if (normalized.includes("low")) return 3;
+  return 4;
+}
+
+function readNumber(source: Record<string, unknown>, key: string) {
+  const value = source[key];
+  if (typeof value === "number") return value;
+  if (typeof value === "string" && value.trim() && !Number.isNaN(Number(value))) return Number(value);
+  return undefined;
+}
+
+function readFacetValues(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") return "";
+      const entry = item as IssueFacetEntry;
+      return typeof entry.value === "string" ? entry.value.trim() : "";
+    })
+    .filter(Boolean);
+}
+
+function buildQuerySuggestions(facets: IssueFacets): string[] {
+  const tradeSuggestions = facets.trades
+    .filter((trade) => trade.toLowerCase() !== "general")
+    .slice(0, 8)
+    .map((trade) => `Show open ${trade} issues`);
+  const locationSuggestions = facets.locations
+    .slice(0, 8)
+    .map((location) => `Show open issues at ${location}`);
+  const severitySuggestions = (facets.severities.length ? facets.severities : ["Critical", "High", "Medium", "Low"])
+    .slice(0, 4)
+    .map((severity) => `Show ${severity.toLowerCase()} priority issues`);
+  return uniqueStrings([...severitySuggestions, ...tradeSuggestions, ...locationSuggestions]).slice(0, 20);
+}
+
+function uniqueStrings(values: readonly string[]) {
+  return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
+}
+
+function confirmationMessageFromIssueUpdate(payload: unknown, issueId: string, status: IssueStatus) {
+  if (payload && typeof payload === "object") {
+    const record = payload as { message?: unknown; item?: { status?: unknown; id?: unknown } };
+    if (typeof record.message === "string" && record.message.trim()) {
+      return record.message.trim();
+    }
+    if (record.item && typeof record.item.status === "string") {
+      return `${String(record.item.id || issueId)} is now ${formatIssueStatus(normalizeIssueStatus(record.item.status))}.`;
+    }
+  }
+  return `${issueId} is now ${formatIssueStatus(status)}.`;
 }
 
 function SummaryPill({
@@ -1132,7 +1506,9 @@ function SummaryPill({
 }
 
 function IssueCard({
+  id,
   priority,
+  status,
   issue,
   project,
   location,
@@ -1141,9 +1517,12 @@ function IssueCard({
   action,
   evidence,
   reportReferences,
+  onUpdateIssueStatus,
   compact = false,
 }: {
+  id?: string;
   priority?: string;
+  status?: string;
   issue?: string;
   project?: string;
   location?: string;
@@ -1152,9 +1531,16 @@ function IssueCard({
   action?: string;
   evidence?: string;
   reportReferences: ReportReferenceMaps;
+  onUpdateIssueStatus: (issueId: string, status: IssueStatus) => Promise<void>;
   compact?: boolean;
 }) {
+  const [currentStatus, setCurrentStatus] = useState<IssueStatus>(normalizeIssueStatus(status));
+  const [pendingStatus, setPendingStatus] = useState(false);
+  useEffect(() => {
+    setCurrentStatus(normalizeIssueStatus(status));
+  }, [status]);
   const issueReference = resolveIssueReportReference({
+    issueId: id,
     issueTitle: issue,
     source,
     reportReferences,
@@ -1163,6 +1549,29 @@ function IssueCard({
   const inferredProject = project || [issueReference?.project, issueReference?.site].filter(Boolean).join(" | ");
   const displayedLocation = location || "Location not specified";
   const displayedSource = source && source !== "Not specified" ? source : issueReference?.sourceName;
+
+  async function handleStatusChange(nextStatus: IssueStatus) {
+    if (!id || nextStatus === currentStatus) return;
+    const previousStatus = currentStatus;
+    setCurrentStatus(nextStatus);
+    setPendingStatus(true);
+    try {
+      await onUpdateIssueStatus(id, nextStatus);
+    } catch {
+      setCurrentStatus(previousStatus);
+      window.dispatchEvent(
+        new CustomEvent("soterra-chat-toast", {
+          detail: {
+            title: "Status update failed",
+            message: `${id} could not be updated. Please try again.`,
+            tone: "error",
+          } satisfies ToastState,
+        })
+      );
+    } finally {
+      setPendingStatus(false);
+    }
+  }
 
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-white/10 dark:bg-slate-900/70 dark:shadow-none">
@@ -1184,6 +1593,29 @@ function IssueCard({
         >
           {priority || "Priority"}
         </span>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400" htmlFor={id ? `status-${id}` : undefined}>
+          Status
+        </label>
+        <select
+          id={id ? `status-${id}` : undefined}
+          value={currentStatus}
+          disabled={!id || pendingStatus}
+          onChange={(event) => void handleStatusChange(event.target.value as IssueStatus)}
+          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 outline-none transition focus:border-indigo-300 disabled:cursor-not-allowed disabled:opacity-55 dark:border-white/10 dark:bg-black/35 dark:text-slate-100 dark:focus:border-indigo-300/40"
+        >
+          {issueStatusOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        {!id ? (
+          <span className="text-xs text-slate-400 dark:text-slate-500">
+            Issue ID needed to update
+          </span>
+        ) : null}
       </div>
       <dl className={classNames("mt-3 grid gap-2", compact ? "sm:grid-cols-2" : "sm:grid-cols-3")}>
         <MetaItem label="Project / location" value={[inferredProject, displayedLocation].filter(Boolean).join(" | ")} wide={!compact} />
@@ -1448,7 +1880,7 @@ function parseIssueActionPlan(content: string): AnswerBlock[] {
       continue;
     }
 
-    const field = line.match(/^(Severity|Priority|Location|Responsible trade|Trade|Source|Fix|Recommended action|Evidence|Evidence required|Reinspection readiness):\s*(.*)$/i);
+    const field = line.match(/^(Issue ID|ID|Status|Severity|Priority|Location|Responsible trade|Trade|Source|Fix|Recommended action|Evidence|Evidence required|Reinspection readiness):\s*(.*)$/i);
     if (field) {
       const label = field[1].toLowerCase();
       const value = cleanInlineText(field[2]);
@@ -1456,6 +1888,10 @@ function parseIssueActionPlan(content: string): AnswerBlock[] {
         readiness = value;
       } else if (!current) {
         intro.push(`${field[1]}: ${value}`);
+      } else if (label === "issue id" || label === "id") {
+        current.id = value;
+      } else if (label === "status") {
+        current.status = value;
       } else if (label === "severity" || label === "priority") {
         current.priority = value;
       } else if (label === "location") {
@@ -1567,6 +2003,17 @@ function priorityTone(priority?: string) {
     return "bg-sky-100 text-sky-700 dark:bg-sky-300/15 dark:text-sky-100";
   }
   return "bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-200";
+}
+
+function normalizeIssueStatus(status?: string): IssueStatus {
+  const normalized = String(status ?? "").trim().toLowerCase();
+  if (normalized === "closed") return "Closed";
+  if (normalized === "in progress" || normalized === "in-progress") return "In Progress";
+  return "Open";
+}
+
+function formatIssueStatus(status: IssueStatus) {
+  return status === "In Progress" ? "In progress" : status;
 }
 
 function friendlySourceName(name: string) {
